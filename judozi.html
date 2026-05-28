@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judozi | Modular Offensive Security Framework</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Times New Roman', Times, serif; background: #ffffff; color: #333333; max-width: 1080px; margin: 0 auto; padding: 48px 40px; line-height: 1.8; }
+  a { color: #2563eb; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .back { font-size: 0.85em; margin-bottom: 32px; display: inline-block; }
+  h1 { color: #111; font-size: 1.8em; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 0.95em; margin-bottom: 32px; }
+  h2 { color: #111; font-size: 1.2em; margin: 40px 0 16px 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+  h3 { color: #111; font-size: 1.05em; margin: 28px 0 10px 0; }
+  p { font-size: 0.92em; color: #444; margin-bottom: 14px; }
+  p strong { color: #222; }
+  code { font-family: 'Courier New', monospace; font-size: 0.88em; background: #f5f5f5; padding: 1px 5px; border-radius: 3px; }
+  pre { font-family: 'Courier New', monospace; font-size: 0.82em; background: #1a1a2e; color: #e0e0e0; padding: 16px 20px; border-radius: 6px; overflow-x: auto; margin: 16px 0; line-height: 1.6; }
+  pre .comment { color: #666; }
+  pre .highlight { color: #7aa2f7; }
+  pre .green { color: #4ade80; }
+  pre .red { color: #f87171; }
+  pre .yellow { color: #facc15; }
+  .tag { display: inline-block; font-size: 0.72em; padding: 2px 8px; margin: 2px 3px 2px 0; background: #eef2ff; color: #2563eb; border-radius: 2px; }
+  .tag.go { background: #ecfeff; color: #0891b2; }
+  .diagram { margin: 28px 0; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px 0; font-size: 0.85em; }
+  th { background: #f8f9fa; color: #111; text-align: left; padding: 10px 12px; border-bottom: 2px solid #e0e0e0; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; color: #444; }
+  td code { font-size: 0.85em; }
+  .module-card { border-left: 3px solid #2563eb; padding: 16px 0 16px 20px; margin-bottom: 24px; background: #fafbff; }
+  .module-card h3 { margin-top: 0; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 20px 0; }
+  .stat-box { background: #fafbff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; text-align: center; }
+  .stat-box .number { font-size: 2em; font-weight: bold; color: #2563eb; }
+  .stat-box .label { font-size: 0.8em; color: #888; margin-top: 4px; }
+  .links { font-size: 0.85em; margin-top: 32px; }
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 44px 0; }
+  footer { font-size: 0.75em; color: #aaa; }
+  .quote { border-left: 3px solid #ddd; padding: 8px 16px; margin: 16px 0; font-style: italic; color: #666; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<a class="back" href="index.html">Azizcan Dastan</a>
+
+<h1>Judozi</h1>
+<div class="subtitle">Modular Offensive Security Framework</div>
+
+<div>
+  <span class="tag go">Go 1.22+</span>
+  <span class="tag go">Linux</span>
+  <span class="tag">zero dependencies</span>
+  <span class="tag">static binary</span>
+  <span class="tag">modular architecture</span>
+  <span class="tag">kernel privesc</span>
+  <span class="tag">persistence</span>
+  <span class="tag">recon</span>
+  <span class="tag">interactive shell</span>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-box">
+    <div class="number">23</div>
+    <div class="label">kernel exploits</div>
+  </div>
+  <div class="stat-box">
+    <div class="number">5.3MB</div>
+    <div class="label">static binary</div>
+  </div>
+  <div class="stat-box">
+    <div class="number">3</div>
+    <div class="label">modules</div>
+  </div>
+  <div class="stat-box">
+    <div class="number">0</div>
+    <div class="label">dependencies</div>
+  </div>
+</div>
+
+<h2>Overview</h2>
+
+<p>Judozi is a modular offensive security framework written in pure Go. It compiles to a single static binary with zero external dependencies, designed for environments where installing packages or toolchains is not an option. The framework uses a plugin-based module system where each module implements a common interface and is auto-discovered at startup.</p>
+
+<p>The framework currently ships with three modules: <strong>kernel</strong> (automated privilege escalation), <strong>persistence</strong> (post-exploitation persistence mechanisms), and <strong>recon</strong> (system enumeration and reconnaissance). After successful privilege escalation, Judozi drops into an interactive shell session with full module access.</p>
+
+<h2>Architecture</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 820 400" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="820" height="400" fill="#fafbff" rx="8"/>
+  <text x="410" y="28" text-anchor="middle" font-family="Times New Roman" font-size="14" fill="#111" font-weight="bold">Judozi Framework Architecture</text>
+
+  <!-- Entry point -->
+  <rect x="320" y="48" width="180" height="40" rx="4" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <text x="410" y="64" text-anchor="middle" font-family="Courier New" font-size="11" fill="#2563eb" font-weight="bold">main.go</text>
+  <text x="410" y="80" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">CLI entry + interactive menu</text>
+
+  <line x1="410" y1="88" x2="410" y2="115" stroke="#2563eb" stroke-width="1.5" marker-end="url(#aj)"/>
+
+  <!-- Module Registry -->
+  <rect x="290" y="115" width="240" height="44" rx="4" fill="#eef2ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="410" y="135" text-anchor="middle" font-family="Courier New" font-size="11" fill="#2563eb" font-weight="bold">Module Registry</text>
+  <text x="410" y="150" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">auto-discovery | interface validation | dispatch</text>
+
+  <!-- Three module branches -->
+  <line x1="330" y1="159" x2="140" y2="200" stroke="#888" stroke-width="1.5" marker-end="url(#ag2)"/>
+  <line x1="410" y1="159" x2="410" y2="200" stroke="#888" stroke-width="1.5" marker-end="url(#ag2)"/>
+  <line x1="490" y1="159" x2="680" y2="200" stroke="#888" stroke-width="1.5" marker-end="url(#ag2)"/>
+
+  <!-- Kernel Module -->
+  <rect x="40" y="200" width="200" height="140" rx="6" fill="#fff" stroke="#dc2626" stroke-width="1.5"/>
+  <rect x="40" y="200" width="200" height="28" rx="6" fill="#dc2626"/>
+  <rect x="40" y="222" width="200" height="6" fill="#dc2626"/>
+  <text x="140" y="219" text-anchor="middle" font-family="Courier New" font-size="11" fill="#fff" font-weight="bold">kernel</text>
+  <text x="140" y="248" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">Privilege Escalation</text>
+  <text x="60" y="270" font-family="Times New Roman" font-size="9" fill="#666">Kernel version detection</text>
+  <text x="60" y="284" font-family="Times New Roman" font-size="9" fill="#666">Exploit DB matching (23 CVEs)</text>
+  <text x="60" y="298" font-family="Times New Roman" font-size="9" fill="#666">Hybrid: compile or binary</text>
+  <text x="60" y="312" font-family="Times New Roman" font-size="9" fill="#666">GCC-free fallback mode</text>
+  <text x="60" y="326" font-family="Times New Roman" font-size="9" fill="#666">Auto mode: try all matching</text>
+
+  <!-- Persistence Module -->
+  <rect x="310" y="200" width="200" height="140" rx="6" fill="#fff" stroke="#ea580c" stroke-width="1.5"/>
+  <rect x="310" y="200" width="200" height="28" rx="6" fill="#ea580c"/>
+  <rect x="310" y="222" width="200" height="6" fill="#ea580c"/>
+  <text x="410" y="219" text-anchor="middle" font-family="Courier New" font-size="11" fill="#fff" font-weight="bold">persistence</text>
+  <text x="410" y="248" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">Post Exploitation</text>
+  <text x="330" y="270" font-family="Times New Roman" font-size="9" fill="#666">Requires root access</text>
+  <text x="330" y="284" font-family="Times New Roman" font-size="9" fill="#666">Multiple techniques</text>
+  <text x="330" y="298" font-family="Times New Roman" font-size="9" fill="#666">Install/remove modes</text>
+  <text x="330" y="312" font-family="Times New Roman" font-size="9" fill="#666">Chains with kernel module</text>
+  <text x="330" y="326" font-family="Times New Roman" font-size="9" fill="#666">Cleanup support</text>
+
+  <!-- Recon Module -->
+  <rect x="580" y="200" width="200" height="140" rx="6" fill="#fff" stroke="#16a34a" stroke-width="1.5"/>
+  <rect x="580" y="200" width="200" height="28" rx="6" fill="#16a34a"/>
+  <rect x="580" y="222" width="200" height="6" fill="#16a34a"/>
+  <text x="680" y="219" text-anchor="middle" font-family="Courier New" font-size="11" fill="#fff" font-weight="bold">recon</text>
+  <text x="680" y="248" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">Reconnaissance</text>
+  <text x="600" y="270" font-family="Times New Roman" font-size="9" fill="#666">System enumeration</text>
+  <text x="600" y="284" font-family="Times New Roman" font-size="9" fill="#666">Concurrent execution</text>
+  <text x="600" y="298" font-family="Times New Roman" font-size="9" fill="#666">File output or stdout</text>
+  <text x="600" y="312" font-family="Times New Roman" font-size="9" fill="#666">Timestamped reports</text>
+  <text x="600" y="326" font-family="Times New Roman" font-size="9" fill="#666">Selective technique runs</text>
+
+  <!-- Interactive Shell -->
+  <line x1="410" y1="340" x2="410" y2="360" stroke="#888" stroke-width="1.5" marker-end="url(#ag2)"/>
+
+  <rect x="280" y="360" width="260" height="32" rx="4" fill="#f0f4ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="410" y="381" text-anchor="middle" font-family="Courier New" font-size="11" fill="#2563eb" font-weight="bold">Interactive Shell</text>
+
+  <defs>
+    <marker id="aj" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/></marker>
+    <marker id="ag2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#888"/></marker>
+  </defs>
+</svg>
+</div>
+
+<p>Every module implements the <code>Module</code> interface: <code>Name()</code>, <code>Description()</code>, <code>Category()</code>, and <code>Run(args []string)</code>. The registry auto-discovers registered modules and dispatches execution based on CLI arguments or interactive selection. After a successful kernel exploit, the framework automatically transitions into an interactive shell with access to all modules.</p>
+
+<h2>Module Interface</h2>
+
+<pre><span class="comment">// Every Judozi module implements this interface</span>
+<span class="highlight">type</span> Module <span class="highlight">interface</span> {
+    Name()        <span class="green">string</span>
+    Description() <span class="green">string</span>
+    Category()    <span class="green">string</span>
+    Run(args []<span class="green">string</span>) <span class="red">error</span>
+}</pre>
+
+<h2>Kernel Module: Execution Pipeline</h2>
+
+<p>The kernel module is the primary attack module. It automates the entire privilege escalation workflow from kernel version detection through exploit selection, compilation or binary download, and execution.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 820 280" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="820" height="280" fill="#fafbff" rx="8"/>
+  <text x="410" y="28" text-anchor="middle" font-family="Times New Roman" font-size="14" fill="#111" font-weight="bold">Kernel Module: Exploit Execution Pipeline</text>
+
+  <!-- Step 1 -->
+  <rect x="30" y="55" width="140" height="70" rx="4" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="100" y="75" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#2563eb" font-weight="bold">1. Detect</text>
+  <text x="100" y="92" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Read /proc/version</text>
+  <text x="100" y="105" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Parse kernel version</text>
+  <text x="100" y="118" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Detect architecture</text>
+
+  <line x1="170" y1="90" x2="200" y2="90" stroke="#2563eb" stroke-width="1.5" marker-end="url(#ak)"/>
+
+  <!-- Step 2 -->
+  <rect x="200" y="55" width="140" height="70" rx="4" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="270" y="75" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#2563eb" font-weight="bold">2. Match</text>
+  <text x="270" y="92" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Load exploits.json</text>
+  <text x="270" y="105" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Filter by version range</text>
+  <text x="270" y="118" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Filter by arch</text>
+
+  <line x1="340" y1="90" x2="370" y2="90" stroke="#2563eb" stroke-width="1.5" marker-end="url(#ak)"/>
+
+  <!-- Step 3 -->
+  <rect x="370" y="55" width="140" height="70" rx="4" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="440" y="75" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#2563eb" font-weight="bold">3. Acquire</text>
+  <text x="440" y="92" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Try GCC compile</text>
+  <text x="440" y="105" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Fallback: download</text>
+  <text x="440" y="118" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">precompiled binary</text>
+
+  <line x1="510" y1="90" x2="540" y2="90" stroke="#2563eb" stroke-width="1.5" marker-end="url(#ak)"/>
+
+  <!-- Step 4 -->
+  <rect x="540" y="55" width="140" height="70" rx="4" fill="#fff" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="610" y="75" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#dc2626" font-weight="bold">4. Execute</text>
+  <text x="610" y="92" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Run exploit binary</text>
+  <text x="610" y="105" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Check for root</text>
+  <text x="610" y="118" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Next if failed</text>
+
+  <line x1="680" y1="90" x2="710" y2="90" stroke="#dc2626" stroke-width="1.5" marker-end="url(#akr)"/>
+
+  <!-- Step 5 -->
+  <rect x="710" y="55" width="85" height="70" rx="4" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="752" y="80" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#16a34a" font-weight="bold">5. Shell</text>
+  <text x="752" y="98" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">root #</text>
+  <text x="752" y="112" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">interactive</text>
+
+  <!-- Binary fallback detail -->
+  <text x="410" y="160" text-anchor="middle" font-family="Times New Roman" font-size="13" fill="#111" font-weight="bold">Hybrid Execution: Compile vs. Binary Fallback</text>
+
+  <!-- GCC path -->
+  <rect x="100" y="180" width="280" height="80" rx="4" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="240" y="200" text-anchor="middle" font-family="Times New Roman" font-size="11" fill="#16a34a" font-weight="bold">Path A: GCC Available</text>
+  <text x="240" y="220" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Download source (.c) from exploit DB</text>
+  <text x="240" y="234" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Compile with specified flags</text>
+  <text x="240" y="248" text-anchor="middle" font-family="Courier New" font-size="8" fill="#16a34a">gcc -Wall -o exploit source.c -static</text>
+
+  <!-- OR -->
+  <text x="410" y="225" text-anchor="middle" font-family="Times New Roman" font-size="12" fill="#888" font-weight="bold">OR</text>
+
+  <!-- Binary fallback path -->
+  <rect x="440" y="180" width="280" height="80" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="580" y="200" text-anchor="middle" font-family="Times New Roman" font-size="11" fill="#dc2626" font-weight="bold">Path B: No GCC (Fallback)</text>
+  <text x="580" y="220" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">Download precompiled static binary</text>
+  <text x="580" y="234" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">from GitHub releases</text>
+  <text x="580" y="248" text-anchor="middle" font-family="Courier New" font-size="8" fill="#dc2626">chmod +x binary && ./binary</text>
+
+  <defs>
+    <marker id="ak" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/></marker>
+    <marker id="akr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/></marker>
+  </defs>
+</svg>
+</div>
+
+<h2>Exploit Database</h2>
+
+<p>The kernel module ships with a JSON-based exploit database covering 23 CVEs across kernel versions 2.6.22 through 6.7.1. Each entry includes version range constraints, architecture support, source URLs, precompiled binary URLs, compilation commands, and execution instructions.</p>
+
+<table>
+  <tr>
+    <th>CVE</th>
+    <th>Name</th>
+    <th>Kernel Range</th>
+    <th>Arch</th>
+    <th>Category</th>
+  </tr>
+  <tr><td><code>CVE-2024-1086</code></td><td>nf_tables UAF</td><td>3.15.0 to 6.7.1</td><td>amd64</td><td>nftables, uaf</td></tr>
+  <tr><td><code>CVE-2023-3269</code></td><td>StackRot</td><td>6.1.0 to 6.4.0</td><td>amd64</td><td>maple-tree, uaf</td></tr>
+  <tr><td><code>CVE-2023-35829</code></td><td>rkvdec UAF</td><td>5.11.0 to 6.3.1</td><td>amd64</td><td>driver, uaf</td></tr>
+  <tr><td><code>CVE-2023-32233</code></td><td>Netfilter nf_tables UAF</td><td>3.13.0 to 6.3.1</td><td>amd64</td><td>nftables, uaf</td></tr>
+  <tr><td><code>CVE-2023-2640</code></td><td>GameOver(lay)</td><td>5.15.0 to 6.2.0</td><td>amd64, arm64</td><td>overlayfs, ubuntu</td></tr>
+  <tr><td><code>CVE-2023-0179</code></td><td>nftables OOB Write</td><td>5.5.0 to 6.2.0</td><td>amd64</td><td>nftables, oob</td></tr>
+  <tr><td><code>CVE-2022-34918</code></td><td>Netfilter Heap Overflow</td><td>5.8.0 to 5.18.8</td><td>amd64</td><td>nftables, heap</td></tr>
+  <tr><td><code>CVE-2022-2588</code></td><td>DirtyCred</td><td>3.6.0 to 5.19.1</td><td>amd64</td><td>route4, uaf</td></tr>
+  <tr><td><code>CVE-2022-1015</code></td><td>nf_tables OOB Access</td><td>5.12.0 to 5.17.0</td><td>amd64</td><td>nftables, oob</td></tr>
+  <tr><td><code>CVE-2022-0847</code></td><td><strong>DirtyPipe</strong></td><td>5.8.0 to 5.16.10</td><td>amd64, arm64</td><td>pipe, write-anywhere</td></tr>
+  <tr><td><code>CVE-2022-0185</code></td><td>fsconfig Heap Overflow</td><td>5.1.0 to 5.16.1</td><td>amd64</td><td>fsconfig, heap</td></tr>
+  <tr><td><code>CVE-2021-33909</code></td><td>Sequoia</td><td>3.16.0 to 5.13.3</td><td>amd64</td><td>filesystem, seq_file</td></tr>
+  <tr><td><code>CVE-2021-31440</code></td><td>eBPF Bounds Tracking</td><td>5.7.0 to 5.11.0</td><td>amd64</td><td>ebpf, verifier</td></tr>
+  <tr><td><code>CVE-2021-22555</code></td><td>Netfilter xt_compat</td><td>2.6.19 to 5.12.0</td><td>amd64</td><td>netfilter, oob-write</td></tr>
+  <tr><td><code>CVE-2021-3493</code></td><td>OverlayFS Ubuntu</td><td>3.13.0 to 5.10.99</td><td>amd64, arm64</td><td>overlayfs, ubuntu</td></tr>
+  <tr><td><code>CVE-2020-8835</code></td><td>eBPF Verifier Bypass</td><td>5.5.0 to 5.6.1</td><td>amd64</td><td>ebpf, verifier</td></tr>
+  <tr><td><code>CVE-2019-13272</code></td><td>ptrace_link</td><td>4.10.0 to 5.1.17</td><td>amd64, arm64, 386</td><td>ptrace, creds</td></tr>
+  <tr><td><code>CVE-2018-18955</code></td><td>Nested User Namespace</td><td>4.15.0 to 4.19.1</td><td>amd64</td><td>userns, idmap</td></tr>
+  <tr><td><code>CVE-2017-16995</code></td><td>eBPF Arbitrary R/W</td><td>4.4.0 to 4.14.7</td><td>amd64</td><td>ebpf, sign-extension</td></tr>
+  <tr><td><code>CVE-2017-7308</code></td><td>AF_PACKET</td><td>2.6.27 to 4.10.5</td><td>amd64</td><td>af_packet, heap-oob</td></tr>
+  <tr><td><code>CVE-2017-1000112</code></td><td>UDP UFO</td><td>4.4.0 to 4.12.6</td><td>amd64</td><td>udp, ufo</td></tr>
+  <tr><td><code>CVE-2016-5195</code></td><td><strong>DirtyCow</strong></td><td>2.6.22 to 4.8.2</td><td>amd64, arm64, 386</td><td>cow, race-condition</td></tr>
+  <tr><td><code>CVE-2016-0728</code></td><td>Keyring Refcount</td><td>3.8.0 to 4.4.0</td><td>amd64</td><td>keyring, refcount</td></tr>
+</table>
+
+<h2>Kernel Version Coverage</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 820 200" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="820" height="200" fill="#fafbff" rx="8"/>
+  <text x="410" y="24" text-anchor="middle" font-family="Times New Roman" font-size="13" fill="#111" font-weight="bold">Exploit Coverage by Kernel Version</text>
+
+  <!-- Timeline -->
+  <line x1="60" y1="170" x2="780" y2="170" stroke="#ccc" stroke-width="1"/>
+
+  <!-- Version labels -->
+  <text x="60" y="188" text-anchor="middle" font-family="Courier New" font-size="8" fill="#888">2.6</text>
+  <text x="180" y="188" text-anchor="middle" font-family="Courier New" font-size="8" fill="#888">3.x</text>
+  <text x="300" y="188" text-anchor="middle" font-family="Courier New" font-size="8" fill="#888">4.x</text>
+  <text x="460" y="188" text-anchor="middle" font-family="Courier New" font-size="8" fill="#888">5.x</text>
+  <text x="620" y="188" text-anchor="middle" font-family="Courier New" font-size="8" fill="#888">6.x</text>
+  <text x="780" y="188" text-anchor="middle" font-family="Courier New" font-size="8" fill="#888">6.7</text>
+
+  <!-- Exploit ranges (horizontal bars) -->
+  <rect x="60" y="42" width="250" height="8" rx="2" fill="#dc2626" opacity="0.7"/>
+  <text x="55" y="48" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">DirtyCow</text>
+
+  <rect x="180" y="54" width="140" height="8" rx="2" fill="#ea580c" opacity="0.7"/>
+  <text x="55" y="60" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">AF_PACKET</text>
+
+  <rect x="250" y="66" width="200" height="8" rx="2" fill="#ca8a04" opacity="0.7"/>
+  <text x="55" y="72" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">ptrace_link</text>
+
+  <rect x="370" y="78" width="320" height="8" rx="2" fill="#2563eb" opacity="0.7"/>
+  <text x="55" y="84" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">DirtyPipe</text>
+
+  <rect x="350" y="90" width="340" height="8" rx="2" fill="#7c3aed" opacity="0.7"/>
+  <text x="55" y="96" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">fsconfig</text>
+
+  <rect x="200" y="102" width="560" height="8" rx="2" fill="#16a34a" opacity="0.7"/>
+  <text x="55" y="108" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">nf_tables UAF (2024)</text>
+
+  <rect x="180" y="114" width="530" height="8" rx="2" fill="#0891b2" opacity="0.7"/>
+  <text x="55" y="120" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">Netfilter 32233</text>
+
+  <rect x="400" y="126" width="240" height="8" rx="2" fill="#be185d" opacity="0.7"/>
+  <text x="55" y="132" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">GameOver(lay)</text>
+
+  <rect x="550" y="138" width="150" height="8" rx="2" fill="#4f46e5" opacity="0.7"/>
+  <text x="55" y="144" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">StackRot</text>
+
+  <rect x="130" y="150" width="470" height="8" rx="2" fill="#059669" opacity="0.7"/>
+  <text x="55" y="156" text-anchor="end" font-family="Times New Roman" font-size="7" fill="#666">DirtyCred</text>
+</svg>
+</div>
+
+<h2>Real World Testing</h2>
+
+<p>Judozi has been tested in production cloud environments, including Azure Container instances running kernel 5.15.0. The binary fallback system was validated in GCC-free environments: the framework detected 10 matching exploits, automatically downloaded precompiled binaries, and executed them without requiring any compiler toolchain on the target.</p>
+
+<pre><span class="green">nextjs@container:/tmp$</span> uname -r
+5.15.0-1102-azure
+
+<span class="green">nextjs@container:/tmp$</span> ./judozi kernel -auto
+<span class="yellow">[*]</span> Kernel: 5.15.0
+<span class="green">[+]</span> Architecture: amd64
+<span class="green">[+]</span> Found <span class="highlight">10</span> potential exploit(s)
+
+<span class="red">[!]</span> GCC not available, using binary fallback mode
+<span class="yellow">[*]</span> Downloading CVE-2024-1086...
+<span class="green">[+]</span> Binary downloaded successfully (166KB)
+<span class="yellow">[*]</span> Executing exploit...
+<span class="yellow">[*]</span> creating user namespace (CLONE_NEWUSER)...
+<span class="yellow">[*]</span> creating network namespace (CLONE_NEWNET)...</pre>
+
+<h2>Project Structure</h2>
+
+<pre>judozi/
+├── cmd/judozi/
+│   └── main.go              <span class="comment"># CLI entry, module selection, shell dispatch</span>
+├── modules/
+│   ├── kernel/              <span class="comment"># Privilege escalation module</span>
+│   │   ├── kernel.go        <span class="comment"># Module implementation</span>
+│   │   └── pkg/
+│   │       ├── exploit/     <span class="comment"># Download, compile, execute logic</span>
+│   │       ├── kernel/      <span class="comment"># Version detection and parsing</span>
+│   │       ├── output/      <span class="comment"># Colored terminal output</span>
+│   │       └── vulndb/      <span class="comment"># Exploit database (exploits.json)</span>
+│   ├── persistence/         <span class="comment"># Post-exploitation persistence</span>
+│   │   ├── persistence.go
+│   │   └── techniques/
+│   └── recon/               <span class="comment"># System reconnaissance</span>
+│       ├── recon.go
+│       └── techniques/
+├── pkg/
+│   ├── module/              <span class="comment"># Module interface and registry</span>
+│   ├── shell/               <span class="comment"># Interactive shell session</span>
+│   └── ui/                  <span class="comment"># Terminal UI framework</span>
+├── go.mod
+└── judozi                   <span class="comment"># 5.3MB static binary</span></pre>
+
+<div class="links">
+  <a href="https://github.com/past3l/judozi">GitHub Repository</a>
+</div>
+
+<hr>
+<footer>Azizcan Dastan | Milenium Security | 2026</footer>
+
+</body>
+</html>

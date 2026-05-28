@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LID | Linux Integrity Drift</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Times New Roman', Times, serif; background: #ffffff; color: #333333; max-width: 1080px; margin: 0 auto; padding: 48px 40px; line-height: 1.8; }
+  a { color: #2563eb; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .back { font-size: 0.85em; margin-bottom: 32px; display: inline-block; }
+  h1 { color: #111; font-size: 1.8em; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 0.95em; margin-bottom: 32px; }
+  h2 { color: #111; font-size: 1.2em; margin: 40px 0 16px 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+  h3 { color: #111; font-size: 1.05em; margin: 28px 0 10px 0; }
+  p { font-size: 0.92em; color: #444; margin-bottom: 14px; }
+  p strong { color: #222; }
+  code { font-family: 'Courier New', monospace; font-size: 0.88em; background: #f5f5f5; padding: 1px 5px; border-radius: 3px; }
+  .tag { display: inline-block; font-size: 0.72em; padding: 2px 8px; margin: 2px 3px 2px 0; background: #eef2ff; color: #2563eb; border-radius: 2px; }
+  .tag.red { background: #fef2f2; color: #dc2626; }
+  .diagram { margin: 28px 0; text-align: center; overflow-x: auto; }
+  .diagram svg { max-width: 100%; height: auto; }
+  .finding { border-left: 3px solid #2563eb; padding: 16px 0 16px 20px; margin-bottom: 28px; background: #fafbff; }
+  .finding.critical { border-left-color: #dc2626; }
+  .finding h3 { margin-top: 0; }
+  .finding .severity { font-size: 0.78em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .finding .severity.crit { color: #dc2626; }
+  .finding .severity.high { color: #ea580c; }
+  .finding .severity.med { color: #ca8a04; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px 0; font-size: 0.85em; }
+  th { background: #f8f9fa; color: #111; text-align: left; padding: 10px 12px; border-bottom: 2px solid #e0e0e0; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; color: #444; }
+  .links { font-size: 0.85em; margin-top: 32px; }
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 44px 0; }
+  footer { font-size: 0.75em; color: #aaa; }
+  .quote { border-left: 3px solid #ddd; padding: 8px 16px; margin: 16px 0; font-style: italic; color: #666; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<a class="back" href="index.html">Azizcan Dastan</a>
+
+<h1>LID | Linux Integrity Drift</h1>
+<div class="subtitle">Systematic discovery of kernel code paths that bypass LSM security hooks</div>
+
+<div>
+  <span class="tag red">5 findings</span>
+  <span class="tag">LSM bypass</span>
+  <span class="tag">kernel 5.2+</span>
+  <span class="tag">AppArmor</span>
+  <span class="tag">SELinux</span>
+  <span class="tag">io_uring</span>
+  <span class="tag">eBPF</span>
+  <span class="tag">mount API</span>
+  <span class="tag">AF_XDP</span>
+</div>
+
+<h2>The Core Idea</h2>
+
+<p>The Linux Security Module framework has maintained a single guarantee for over 20 years: security modules can only <strong>add</strong> restrictions, never <strong>remove</strong> them. This guarantee is correct. LID does not break it.</p>
+
+<p>LID finds something different. It identifies kernel subsystems that perform security-sensitive operations without consulting the LSM framework at all. The gate was never breached. It was walked around.</p>
+
+<div class="quote">The security policy is enforced correctly. The problem is that the kernel has code paths that never ask.</div>
+
+<h2>LSM Hook Architecture</h2>
+
+<p>The kernel uses the <code>call_int_hook</code> macro to iterate through registered security modules. Each module returns 0 (allow) or nonzero (deny). The loop short-circuits on the first denial, ensuring modules can only add restrictions.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="760" height="420" fill="#fafbff" rx="8"/>
+
+  <!-- Title -->
+  <text x="380" y="30" text-anchor="middle" font-family="Times New Roman" font-size="14" fill="#111" font-weight="bold">LSM Hook Architecture: The Normal Path vs. The Bypass</text>
+
+  <!-- Left side: Normal Path -->
+  <text x="190" y="60" text-anchor="middle" font-family="Times New Roman" font-size="12" fill="#2563eb" font-weight="bold">NORMAL PATH (hooked)</text>
+
+  <rect x="100" y="75" width="180" height="36" rx="4" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="190" y="98" text-anchor="middle" font-family="Times New Roman" font-size="12" fill="#333">Userspace syscall</text>
+
+  <line x1="190" y1="111" x2="190" y2="135" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="100" y="135" width="180" height="36" rx="4" fill="#fff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="190" y="158" text-anchor="middle" font-family="Times New Roman" font-size="12" fill="#333">VFS / Subsystem entry</text>
+
+  <line x1="190" y1="171" x2="190" y2="195" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="80" y="195" width="220" height="44" rx="4" fill="#eef2ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="190" y="214" text-anchor="middle" font-family="Times New Roman" font-size="11" fill="#2563eb" font-weight="bold">call_int_hook()</text>
+  <text x="190" y="230" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#666">iterate security modules</text>
+
+  <line x1="190" y1="239" x2="130" y2="270" stroke="#888" stroke-width="1" stroke-dasharray="4"/>
+  <line x1="190" y1="239" x2="190" y2="270" stroke="#888" stroke-width="1" stroke-dasharray="4"/>
+  <line x1="190" y1="239" x2="250" y2="270" stroke="#888" stroke-width="1" stroke-dasharray="4"/>
+
+  <rect x="95" y="270" width="70" height="28" rx="3" fill="#fff" stroke="#888" stroke-width="1"/>
+  <text x="130" y="289" text-anchor="middle" font-family="Courier New" font-size="9" fill="#555">AppArmor</text>
+
+  <rect x="172" y="270" width="56" height="28" rx="3" fill="#fff" stroke="#888" stroke-width="1"/>
+  <text x="200" y="289" text-anchor="middle" font-family="Courier New" font-size="9" fill="#555">SELinux</text>
+
+  <rect x="235" y="270" width="56" height="28" rx="3" fill="#fff" stroke="#888" stroke-width="1"/>
+  <text x="263" y="289" text-anchor="middle" font-family="Courier New" font-size="9" fill="#555">BPF LSM</text>
+
+  <line x1="190" y1="298" x2="190" y2="330" stroke="#16a34a" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+  <rect x="110" y="330" width="160" height="36" rx="4" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="190" y="350" text-anchor="middle" font-family="Times New Roman" font-size="11" fill="#16a34a" font-weight="bold">Policy enforced</text>
+  <text x="190" y="362" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#666">audit log written</text>
+
+  <!-- Right side: Bypass Path -->
+  <text x="570" y="60" text-anchor="middle" font-family="Times New Roman" font-size="12" fill="#dc2626" font-weight="bold">BYPASS PATH (no hook)</text>
+
+  <rect x="480" y="75" width="180" height="36" rx="4" fill="#fff" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="570" y="98" text-anchor="middle" font-family="Times New Roman" font-size="12" fill="#333">Userspace syscall</text>
+
+  <line x1="570" y1="111" x2="570" y2="135" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arrow-red)"/>
+
+  <rect x="480" y="135" width="180" height="36" rx="4" fill="#fff" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="570" y="158" text-anchor="middle" font-family="Times New Roman" font-size="12" fill="#333">New subsystem entry</text>
+
+  <line x1="570" y1="171" x2="570" y2="235" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,4"/>
+
+  <rect x="475" y="195" width="190" height="40" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,3"/>
+  <text x="570" y="212" text-anchor="middle" font-family="Times New Roman" font-size="11" fill="#dc2626" font-weight="bold">NO LSM HOOK CALLED</text>
+  <text x="570" y="228" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#999">security framework never consulted</text>
+
+  <line x1="570" y1="235" x2="570" y2="330" stroke="#dc2626" stroke-width="1.5" marker-end="url(#arrow-red)"/>
+
+  <rect x="480" y="330" width="180" height="36" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="570" y="350" text-anchor="middle" font-family="Times New Roman" font-size="11" fill="#dc2626" font-weight="bold">Operation completes</text>
+  <text x="570" y="362" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#999">no audit, no policy check</text>
+
+  <!-- Divider -->
+  <line x1="380" y1="55" x2="380" y2="390" stroke="#e0e0e0" stroke-width="1" stroke-dasharray="4"/>
+
+  <!-- Legend -->
+  <text x="380" y="408" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#888">LID identifies five kernel subsystems that follow the right path.</text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+  </defs>
+</svg>
+</div>
+
+<h2>Five Findings</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="760" height="260" fill="#fafbff" rx="8"/>
+  <text x="380" y="28" text-anchor="middle" font-family="Times New Roman" font-size="14" fill="#111" font-weight="bold">LID Finding Overview</text>
+
+  <!-- LID-001 -->
+  <rect x="20" y="50" width="136" height="190" rx="6" fill="#fff" stroke="#dc2626" stroke-width="1.5"/>
+  <rect x="20" y="50" width="136" height="30" rx="6" fill="#dc2626"/>
+  <rect x="20" y="74" width="136" height="6" fill="#dc2626"/>
+  <text x="88" y="70" text-anchor="middle" font-family="Courier New" font-size="11" fill="#fff" font-weight="bold">LID-001</text>
+  <text x="88" y="100" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">eBPF Pathname</text>
+  <text x="88" y="114" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">Rewriting</text>
+  <text x="88" y="136" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">kprobe on</text>
+  <text x="88" y="148" text-anchor="middle" font-family="Courier New" font-size="8" fill="#2563eb">do_sys_openat2</text>
+  <text x="88" y="168" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">AppArmor blind</text>
+  <text x="88" y="180" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">Zero audit trace</text>
+  <rect x="40" y="198" width="96" height="18" rx="3" fill="#fef2f2"/>
+  <text x="88" y="211" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#dc2626" font-weight="bold">CRITICAL gap</text>
+  <rect x="40" y="220" width="96" height="14" rx="3" fill="#f5f5f5"/>
+  <text x="88" y="231" text-anchor="middle" font-family="Times New Roman" font-size="8" fill="#888">requires CAP_BPF</text>
+
+  <!-- LID-002 -->
+  <rect x="168" y="50" width="136" height="190" rx="6" fill="#fff" stroke="#dc2626" stroke-width="1.5"/>
+  <rect x="168" y="50" width="136" height="30" rx="6" fill="#dc2626"/>
+  <rect x="168" y="74" width="136" height="6" fill="#dc2626"/>
+  <text x="236" y="70" text-anchor="middle" font-family="Courier New" font-size="11" fill="#fff" font-weight="bold">LID-002</text>
+  <text x="236" y="100" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">io_uring</text>
+  <text x="236" y="114" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">MSG_RING fd</text>
+  <text x="236" y="136" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">Unprivileged</text>
+  <text x="236" y="148" text-anchor="middle" font-family="Courier New" font-size="8" fill="#2563eb">security_file_receive</text>
+  <text x="236" y="168" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">bypassed entirely</text>
+  <text x="236" y="180" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">All LSMs blind</text>
+  <rect x="188" y="198" width="96" height="18" rx="3" fill="#fef2f2"/>
+  <text x="236" y="211" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#dc2626" font-weight="bold">CRITICAL gap + escalation</text>
+  <rect x="188" y="220" width="96" height="14" rx="3" fill="#f0fdf4"/>
+  <text x="236" y="231" text-anchor="middle" font-family="Times New Roman" font-size="8" fill="#16a34a">unprivileged</text>
+
+  <!-- LID-003 -->
+  <rect x="316" y="50" width="136" height="190" rx="6" fill="#fff" stroke="#ea580c" stroke-width="1.5"/>
+  <rect x="316" y="50" width="136" height="30" rx="6" fill="#ea580c"/>
+  <rect x="316" y="74" width="136" height="6" fill="#ea580c"/>
+  <text x="384" y="70" text-anchor="middle" font-family="Courier New" font-size="11" fill="#fff" font-weight="bold">LID-003</text>
+  <text x="384" y="100" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">New Mount API</text>
+  <text x="384" y="114" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">Bypass</text>
+  <text x="384" y="136" text-anchor="middle" font-family="Courier New" font-size="8" fill="#2563eb">fsopen/fsmount</text>
+  <text x="384" y="150" text-anchor="middle" font-family="Courier New" font-size="8" fill="#2563eb">move_mount</text>
+  <text x="384" y="170" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">security_sb_mount</text>
+  <text x="384" y="182" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">never called</text>
+  <rect x="336" y="198" width="96" height="18" rx="3" fill="#fff7ed"/>
+  <text x="384" y="211" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#ea580c" font-weight="bold">HIGH gap</text>
+  <rect x="336" y="220" width="96" height="14" rx="3" fill="#f5f5f5"/>
+  <text x="384" y="231" text-anchor="middle" font-family="Times New Roman" font-size="8" fill="#888">requires mount privs</text>
+
+  <!-- LID-004 -->
+  <rect x="464" y="50" width="136" height="190" rx="6" fill="#fff" stroke="#ea580c" stroke-width="1.5"/>
+  <rect x="464" y="50" width="136" height="30" rx="6" fill="#ea580c"/>
+  <rect x="464" y="74" width="136" height="6" fill="#ea580c"/>
+  <text x="532" y="70" text-anchor="middle" font-family="Courier New" font-size="11" fill="#fff" font-weight="bold">LID-004</text>
+  <text x="532" y="100" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">BPF Token</text>
+  <text x="532" y="114" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">Blindness</text>
+  <text x="532" y="136" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">AppArmor implements</text>
+  <text x="532" y="150" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#dc2626" font-weight="bold">0 of 9 hooks</text>
+  <text x="532" y="170" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">Complete blindness</text>
+  <text x="532" y="182" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">to BPF token ops</text>
+  <rect x="484" y="198" width="96" height="18" rx="3" fill="#fff7ed"/>
+  <text x="532" y="211" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#ea580c" font-weight="bold">HIGH gap</text>
+  <rect x="484" y="220" width="96" height="14" rx="3" fill="#f5f5f5"/>
+  <text x="532" y="231" text-anchor="middle" font-family="Times New Roman" font-size="8" fill="#888">requires CAP_BPF</text>
+
+  <!-- LID-005 -->
+  <rect x="612" y="50" width="136" height="190" rx="6" fill="#fff" stroke="#ca8a04" stroke-width="1.5"/>
+  <rect x="612" y="50" width="136" height="30" rx="6" fill="#ca8a04"/>
+  <rect x="612" y="74" width="136" height="6" fill="#ca8a04"/>
+  <text x="680" y="70" text-anchor="middle" font-family="Courier New" font-size="11" fill="#fff" font-weight="bold">LID-005</text>
+  <text x="680" y="100" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">AF_XDP tc</text>
+  <text x="680" y="114" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">Egress Bypass</text>
+  <text x="680" y="136" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">Raw AF_XDP frames</text>
+  <text x="680" y="148" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">bypass tc filters</text>
+  <text x="680" y="168" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">Container network</text>
+  <text x="680" y="180" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">filter evasion</text>
+  <rect x="632" y="198" width="96" height="18" rx="3" fill="#fefce8"/>
+  <text x="680" y="211" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#ca8a04" font-weight="bold">MEDIUM gap</text>
+  <rect x="632" y="220" width="96" height="14" rx="3" fill="#f5f5f5"/>
+  <text x="680" y="231" text-anchor="middle" font-family="Times New Roman" font-size="8" fill="#888">requires CAP_NET_RAW</text>
+</svg>
+</div>
+
+<h2>Detailed Findings</h2>
+
+<div class="finding critical">
+  <div class="severity crit">LID-001 | Critical Visibility Gap</div>
+  <h3>eBPF Pathname Rewriting</h3>
+  <p>A BPF kprobe attached to <code>do_sys_openat2</code> uses <code>bpf_probe_write_user</code> to rewrite the filename in the user space buffer before the kernel copies it. Combined with a hard link at an AppArmor-allowed path, the kernel resolves the rewritten path, AppArmor evaluates the allowed path instead of the denied one, and the access succeeds with zero audit trace.</p>
+  <p>The attack exploits a fundamental gap between AppArmor's pathname-based access control model and eBPF's ability to operate before any LSM hook fires. Two hard links to the same inode are treated as entirely different files by AppArmor policy. The BPF program selectively targets specific process and path combinations, making the bypass transparent, selective, and audit-invisible.</p>
+
+  <div class="diagram">
+  <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="0" width="720" height="300" fill="#fff8f8" rx="6"/>
+    <text x="360" y="24" text-anchor="middle" font-family="Times New Roman" font-size="13" fill="#111" font-weight="bold">LID-001: Pathname Rewriting Attack Flow</text>
+
+    <!-- Process -->
+    <rect x="30" y="50" width="130" height="40" rx="4" fill="#fff" stroke="#333" stroke-width="1.5"/>
+    <text x="95" y="66" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">User Process</text>
+    <text x="95" y="80" text-anchor="middle" font-family="Courier New" font-size="8" fill="#888">open("/tmp/secret")</text>
+
+    <line x1="160" y1="70" x2="210" y2="70" stroke="#333" stroke-width="1.5" marker-end="url(#a1)"/>
+
+    <!-- Kernel entry -->
+    <rect x="210" y="50" width="130" height="40" rx="4" fill="#fff" stroke="#333" stroke-width="1.5"/>
+    <text x="275" y="66" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">Kernel</text>
+    <text x="275" y="80" text-anchor="middle" font-family="Courier New" font-size="8" fill="#888">do_sys_openat2()</text>
+
+    <!-- kprobe fires -->
+    <line x1="275" y1="90" x2="275" y2="120" stroke="#dc2626" stroke-width="2" marker-end="url(#a1r)"/>
+
+    <rect x="195" y="120" width="160" height="50" rx="4" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+    <text x="275" y="138" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#dc2626" font-weight="bold">BPF kprobe fires</text>
+    <text x="275" y="152" text-anchor="middle" font-family="Courier New" font-size="8" fill="#888">bpf_probe_write_user()</text>
+    <text x="275" y="164" text-anchor="middle" font-family="Times New Roman" font-size="8" fill="#dc2626">rewrites to "/tmp/.bypass"</text>
+
+    <!-- After rewrite -->
+    <line x1="355" y1="145" x2="420" y2="145" stroke="#dc2626" stroke-width="1.5" marker-end="url(#a1r)"/>
+
+    <rect x="420" y="125" width="140" height="40" rx="4" fill="#fff" stroke="#333" stroke-width="1.5"/>
+    <text x="490" y="141" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333" font-weight="bold">Kernel copies path</text>
+    <text x="490" y="155" text-anchor="middle" font-family="Courier New" font-size="8" fill="#2563eb">"/tmp/.bypass"</text>
+
+    <!-- VFS resolve -->
+    <line x1="490" y1="165" x2="490" y2="195" stroke="#333" stroke-width="1.5" marker-end="url(#a1)"/>
+
+    <rect x="420" y="195" width="140" height="35" rx="4" fill="#fff" stroke="#333" stroke-width="1.5"/>
+    <text x="490" y="210" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#333">VFS resolves path</text>
+    <text x="490" y="222" text-anchor="middle" font-family="Times New Roman" font-size="9" fill="#888">same inode via hardlink</text>
+
+    <!-- AppArmor check -->
+    <line x1="560" y1="212" x2="610" y2="212" stroke="#16a34a" stroke-width="1.5" marker-end="url(#a1g)"/>
+
+    <rect x="610" y="192" width="100" height="40" rx="4" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="660" y="208" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#16a34a" font-weight="bold">AppArmor</text>
+    <text x="660" y="222" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#16a34a">ALLOW</text>
+
+    <!-- Result -->
+    <line x1="490" y1="230" x2="490" y2="260" stroke="#16a34a" stroke-width="1.5" marker-end="url(#a1g)"/>
+
+    <rect x="390" y="260" width="200" height="30" rx="4" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="490" y="280" text-anchor="middle" font-family="Times New Roman" font-size="10" fill="#16a34a" font-weight="bold">fd returned | secret data accessible | no audit log</text>
+
+    <defs>
+      <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#333"/></marker>
+      <marker id="a1r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/></marker>
+      <marker id="a1g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/></marker>
+    </defs>
+  </svg>
+  </div>
+
+  <table>
+    <tr><th>Property</th><th>Value</th></tr>
+    <tr><td>Hook bypassed</td><td>All pathname-based LSM checks</td></tr>
+    <tr><td>Prerequisite</td><td>CAP_BPF + CAP_PERFMON (or root)</td></tr>
+    <tr><td>AppArmor visibility</td><td>None (zero audit entries)</td></tr>
+    <tr><td>SELinux visibility</td><td>Sees bypass path, not original</td></tr>
+    <tr><td>Selectivity</td><td>Per process, per path</td></tr>
+    <tr><td>Reversibility</td><td>Removing BPF program restores enforcement</td></tr>
+  </table>
+</div>
+
+<div class="finding critical">
+  <div class="severity crit">LID-002 | Critical Visibility Gap + Practical Escalation</div>
+  <h3>io_uring MSG_RING File Descriptor Transfer</h3>
+  <p>The io_uring MSG_RING operation allows one io_uring instance to inject a file descriptor into another ring's fixed file table. This fd transfer completely bypasses <code>security_file_receive()</code>, the LSM hook that AppArmor and SELinux rely on for cross-process file descriptor validation.</p>
+  <p>Unlike other LID findings, this vector operates from <strong>unprivileged userspace</strong> with no special capabilities required. A regular user can transfer arbitrary file descriptors between io_uring instances without any LSM evaluation. The transferred fd is invisible to every registered security module.</p>
+
+  <table>
+    <tr><th>Property</th><th>Value</th></tr>
+    <tr><td>Hook bypassed</td><td><code>security_file_receive()</code></td></tr>
+    <tr><td>Prerequisite</td><td>None (unprivileged)</td></tr>
+    <tr><td>All LSMs blind</td><td>Yes</td></tr>
+    <tr><td>Crosses privilege boundary</td><td>Yes</td></tr>
+    <tr><td>Kernel version</td><td>5.18+ (MSG_RING introduction)</td></tr>
+  </table>
+</div>
+
+<div class="finding">
+  <div class="severity high">LID-003 | High Visibility Gap</div>
+  <h3>New Mount API Bypass</h3>
+  <p>The new mount API introduced with <code>fsopen()</code>, <code>fsmount()</code>, and <code>move_mount()</code> bypasses <code>security_sb_mount()</code>, which is the primary hook that AppArmor and SELinux use to enforce mount policy. The new API path performs mount operations through a different code path that was never wired into the existing LSM mount hook.</p>
+
+  <table>
+    <tr><th>Property</th><th>Value</th></tr>
+    <tr><td>Hook bypassed</td><td><code>security_sb_mount()</code></td></tr>
+    <tr><td>Syscalls</td><td><code>fsopen</code>, <code>fsmount</code>, <code>move_mount</code></td></tr>
+    <tr><td>Impact</td><td>Mount policy enforcement bypassed</td></tr>
+    <tr><td>Prerequisite</td><td>Mount privileges in namespace</td></tr>
+  </table>
+</div>
+
+<div class="finding">
+  <div class="severity high">LID-004 | High Visibility Gap</div>
+  <h3>BPF Token AppArmor Blindness</h3>
+  <p>The BPF token subsystem (kernel 6.9+) introduces nine security hooks for token creation, delegation, and usage. AppArmor implements <strong>zero</strong> of these nine hooks. Any BPF token operation occurs with complete AppArmor blindness, no policy evaluation, and no audit logging.</p>
+
+  <table>
+    <tr><th>Property</th><th>Value</th></tr>
+    <tr><td>Hooks missing</td><td>9 out of 9 BPF token hooks</td></tr>
+    <tr><td>AppArmor coverage</td><td>0%</td></tr>
+    <tr><td>Kernel version</td><td>6.9+</td></tr>
+    <tr><td>Impact</td><td>Full BPF token delegation without MAC</td></tr>
+  </table>
+</div>
+
+<div class="finding">
+  <div class="severity med">LID-005 | Medium Visibility Gap</div>
+  <h3>AF_XDP tc Egress Bypass</h3>
+  <p>Raw network frames transmitted through AF_XDP sockets bypass the tc (traffic control) egress path entirely. Container environments that rely on tc filters for network policy enforcement (including some configurations of Docker and plain iptables setups) are blind to AF_XDP transmitted traffic. The frames go directly to the NIC driver queue, skipping all tc qdisc and filter processing.</p>
+
+  <table>
+    <tr><th>Property</th><th>Value</th></tr>
+    <tr><td>Bypassed layer</td><td>tc egress filters</td></tr>
+    <tr><td>Prerequisite</td><td>CAP_NET_RAW + AF_XDP support</td></tr>
+    <tr><td>Cilium affected</td><td>No (uses XDP/BPF hooks)</td></tr>
+    <tr><td>Plain Docker affected</td><td>Yes (tc based filtering)</td></tr>
+  </table>
+</div>
+
+<h2>Visibility Gap Matrix</h2>
+
+<table>
+  <tr>
+    <th>Finding</th>
+    <th>Visibility Gap</th>
+    <th>Practical Escalation</th>
+    <th>Privilege Required</th>
+    <th>LSMs Affected</th>
+  </tr>
+  <tr>
+    <td><strong>LID-001</strong></td>
+    <td style="color: #dc2626; font-weight: bold;">Critical</td>
+    <td>Limited (already privileged)</td>
+    <td>CAP_BPF + CAP_PERFMON</td>
+    <td>AppArmor, audit</td>
+  </tr>
+  <tr>
+    <td><strong>LID-002</strong></td>
+    <td style="color: #dc2626; font-weight: bold;">Critical</td>
+    <td style="color: #dc2626; font-weight: bold;">High (unprivileged)</td>
+    <td>None</td>
+    <td>All LSMs</td>
+  </tr>
+  <tr>
+    <td><strong>LID-003</strong></td>
+    <td style="color: #ea580c; font-weight: bold;">High</td>
+    <td>Medium</td>
+    <td>Mount privileges</td>
+    <td>AppArmor, SELinux</td>
+  </tr>
+  <tr>
+    <td><strong>LID-004</strong></td>
+    <td style="color: #ea580c; font-weight: bold;">High</td>
+    <td>Limited</td>
+    <td>CAP_BPF</td>
+    <td>AppArmor (0/9 hooks)</td>
+  </tr>
+  <tr>
+    <td><strong>LID-005</strong></td>
+    <td style="color: #ca8a04; font-weight: bold;">Medium</td>
+    <td>Situational</td>
+    <td>CAP_NET_RAW</td>
+    <td>tc based filters</td>
+  </tr>
+</table>
+
+<h2>Architectural Implications</h2>
+
+<p>LID reveals a design tension in the Linux security architecture. The LSM framework correctly enforces that modules can only add restrictions. The eBPF subsystem provides unrestricted hook points that operate before LSM checks. Newer kernel subsystems (io_uring, the new mount API, BPF tokens) introduce operations that were never connected to existing LSM hooks.</p>
+
+<p>The result is that the security perimeter, as understood by AppArmor and SELinux policy, does not match the actual kernel attack surface. Defenders who rely on LSM-based policy enforcement and audit logging have blind spots in their visibility model. Operations can occur, data can be accessed, and file descriptors can be transferred without any security module being consulted.</p>
+
+<p>This is not a bug in any individual component. It is the natural consequence of a kernel that evolves faster than its security framework.</p>
+
+<div class="links">
+  <a href="https://github.com/azqzazq1/LID">GitHub Repository</a> |
+  <a href="https://doi.org/10.5281/zenodo.20257645">DOI: 10.5281/zenodo.20257645</a>
+</div>
+
+<hr>
+<footer>Azizcan Dastan | Milenium Security | 2026</footer>
+
+</body>
+</html>

@@ -3,85 +3,178 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>azqzazq1 — Security Research</title>
+<title>Azizcan Dastan | Offensive Security Researcher</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Courier New', monospace; background: #0a0a0a; color: #c9c9c9; max-width: 720px; margin: 0 auto; padding: 40px 20px; line-height: 1.6; }
-  a { color: #7aa2f7; text-decoration: none; }
+  body { font-family: 'Times New Roman', Times, serif; background: #ffffff; color: #333333; max-width: 1080px; margin: 0 auto; padding: 48px 40px; line-height: 1.7; }
+  a { color: #2563eb; text-decoration: none; }
   a:hover { text-decoration: underline; }
-  h1 { color: #e0e0e0; font-size: 1.4em; margin-bottom: 4px; }
-  .sub { color: #666; font-size: 0.85em; margin-bottom: 40px; }
-  .project { border-left: 2px solid #333; padding: 12px 0 12px 16px; margin-bottom: 32px; }
-  .project h2 { color: #e0e0e0; font-size: 1.1em; margin-bottom: 4px; }
-  .project .tag { display: inline-block; font-size: 0.7em; padding: 2px 6px; margin-right: 4px; background: #1a1a2e; color: #7aa2f7; border-radius: 2px; }
-  .project .tag.red { background: #2e1a1a; color: #f77a7a; }
-  .project p { font-size: 0.85em; margin-top: 8px; color: #999; }
-  .project .findings { font-size: 0.8em; margin-top: 8px; color: #777; }
-  .project .findings span { color: #c9c9c9; }
-  .links { margin-top: 6px; font-size: 0.8em; }
-  hr { border: none; border-top: 1px solid #1a1a1a; margin: 40px 0; }
-  footer { font-size: 0.75em; color: #444; margin-top: 40px; }
+
+  header { margin-bottom: 48px; }
+  header h1 { color: #111111; font-size: 1.5em; margin-bottom: 2px; }
+  header .handle { color: #888; font-size: 0.85em; }
+  header .title { color: #2563eb; font-size: 0.9em; margin-top: 4px; }
+
+  section { margin-bottom: 44px; }
+  section h2 { color: #111111; font-size: 1.05em; margin-bottom: 12px; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
+
+  p { font-size: 0.88em; color: #555; margin-bottom: 12px; }
+  p strong { color: #333; font-weight: normal; }
+
+  .tag-list { margin-top: 8px; margin-bottom: 12px; }
+  .tag { display: inline-block; font-size: 0.7em; padding: 2px 7px; margin: 2px 3px 2px 0; background: #eef2ff; color: #2563eb; border-radius: 2px; }
+
+  .research-item { border-left: 2px solid #d0d0d0; padding: 10px 0 10px 16px; margin-bottom: 24px; }
+  .research-item h3 { color: #111111; font-size: 0.95em; margin-bottom: 2px; }
+  .research-item .meta { font-size: 0.75em; color: #888; margin-bottom: 6px; }
+  .research-item p { font-size: 0.82em; color: #555; margin-bottom: 6px; }
+  .research-item .links { font-size: 0.8em; }
+
+  .interests li { font-size: 0.85em; color: #555; margin-bottom: 6px; list-style: none; }
+
+  .contact-list { list-style: none; }
+  .contact-list li { font-size: 0.82em; color: #555; margin-bottom: 4px; }
+  .contact-list li span { color: #888; display: inline-block; width: 80px; }
+
+  hr { border: none; border-top: 1px solid #e0e0e0; margin: 44px 0; }
+  footer { font-size: 0.7em; color: #aaa; }
 </style>
 </head>
 <body>
 
-<h1>azqzazq1</h1>
-<div class="sub">security research — kernel, eBPF, linux isolation</div>
+<header>
+  <h1>Azizcan Dastan</h1>
+  <div class="handle">azqzazq1</div>
+  <div class="title">Offensive Security Researcher | Milenium Security</div>
+</header>
 
-<div class="project">
-  <h2>LID — Linux Integrity Drift</h2>
-  <span class="tag red">5 findings</span>
-  <span class="tag">LSM bypass</span>
-  <span class="tag">kernel</span>
-  <span class="tag">eBPF</span>
-  <p>Systematic discovery of kernel code paths that bypass LSM security hooks entirely. AppArmor and SELinux enforce policy correctly — but the kernel never asks. Five vectors found across io_uring, BPF, mount API, and AF_XDP subsystems.</p>
-  <div class="findings">
-    <span>LID-001</span> eBPF pathname rewriting (AppArmor blind, zero audit trace)<br>
-    <span>LID-002</span> io_uring MSG_RING fd transfer (unprivileged, LSM invisible)<br>
-    <span>LID-003</span> New mount API (security_sb_mount bypassed)<br>
-    <span>LID-004</span> BPF token AppArmor blindness (0/9 hooks)<br>
-    <span>LID-005</span> AF_XDP tc egress bypass (container network filter evasion)
-  </div>
-  <div class="links">
-    <a href="https://github.com/azqzazq1/LID">github</a> &middot;
-    <a href="https://doi.org/10.5281/zenodo.20257645">doi</a>
-  </div>
-</div>
+<!-- ===== ABOUT ===== -->
+<section>
+  <h2>About</h2>
+  <p>
+    I am an independent offensive security researcher focused on the Linux kernel, eBPF subsystem, and container isolation boundaries. My work centers on finding architectural blind spots in defensive security mechanisms, places where the security framework is correct, but the kernel never consults it.
+  </p>
+  <p>
+    My primary research investigates the trust assumptions embedded in Linux Security Modules (AppArmor, SELinux), eBPF-based runtime monitors (Falco, Tracee, Tetragon), and container orchestration platforms (Kubernetes). Rather than breaking cryptographic primitives or exploiting memory corruption, I focus on <strong>logic-level gaps</strong>: code paths that exist in the kernel but were never wired into the security framework, telemetry pipelines that can be silently poisoned, and isolation boundaries that hold on paper but fail under specific syscall sequences.
+  </p>
+</section>
 
-<div class="project">
-  <h2>SunnyDayBPF</h2>
-  <span class="tag">eBPF</span>
-  <span class="tag">telemetry deception</span>
-  <span class="tag">post-syscall</span>
-  <p>Post-syscall user-buffer telemetry deception via eBPF. Rewrites data in user-space buffers after read-like syscalls complete but before security agents parse it. The event happens, the agent reads data — but the data no longer represents the original event.</p>
-  <div class="links">
-    <a href="https://github.com/azqzazq1/SunnyDayBPF">github</a>
+<!-- ===== RESEARCH INTERESTS ===== -->
+<section>
+  <h2>Research Interests</h2>
+  <div class="tag-list">
+    <span class="tag">Linux kernel</span>
+    <span class="tag">eBPF</span>
+    <span class="tag">LSM framework</span>
+    <span class="tag">AppArmor</span>
+    <span class="tag">SELinux</span>
+    <span class="tag">Kubernetes</span>
+    <span class="tag">container isolation</span>
+    <span class="tag">io_uring</span>
+    <span class="tag">telemetry deception</span>
   </div>
-</div>
+  <ul class="interests">
+    <li><strong>Defensive system gap analysis.</strong> Systematic discovery of kernel subsystems that perform security-sensitive operations without consulting LSM hooks. The security policy is enforced correctly, but the problem is that the kernel has code paths that never ask.</li>
+    <li><strong>eBPF security boundaries.</strong> Investigating both the offensive capabilities of eBPF (pre-check manipulation, post-syscall buffer rewriting) and the defensive fragility of eBPF-based monitors (map state integrity, program array trust).</li>
+    <li><strong>Container and orchestrator isolation.</strong> Exploring how Kubernetes RBAC, admission controllers, node authorizers, and network policies hold up under adversarial conditions, and where they don't.</li>
+    <li><strong>Telemetry trust model.</strong> The gap between what actually happened on a system and what security agents observe and report. If the agent reads data, but the data no longer represents the event, the telemetry pipeline has a fundamental trust problem.</li>
+  </ul>
+</section>
 
-<div class="project">
-  <h2>SunnyMapBPF</h2>
-  <span class="tag red">3 tools blind</span>
-  <span class="tag">eBPF</span>
-  <span class="tag">map poisoning</span>
-  <p>BPF map state poisoning against eBPF runtime security monitors. Demonstrates that Falco, Tracee, and Tetragon do not employ map integrity verification on security-critical maps. A same-privilege process can modify these maps to silently suppress all telemetry — zero errors, zero health check failures, immediate effect.</p>
-  <div class="findings">
-    <span>Tracee v0.24.1</span> config_map &rarr; 16 events to 0<br>
-    <span>Tetragon v1.4.0</span> execve_calls &rarr; 14+ events to 0<br>
-    <span>Falco latest</span> interesting_syscalls &rarr; alerts to 0
+<!-- ===== PUBLISHED RESEARCH ===== -->
+<section>
+  <h2>Published Research</h2>
+
+  <div class="research-item">
+    <h3>LID | Linux Integrity Drift</h3>
+    <div class="meta">5 findings | LSM bypass | kernel 5.2+</div>
+    <p>Systematic discovery of kernel code paths that perform security-sensitive operations without ever consulting the LSM framework. The security check is architecturally correct. The problem is that the kernel never asks. Five vectors across io_uring, eBPF, the new mount API, BPF token delegation, and AF_XDP, each invisible to AppArmor, SELinux, and the audit log.</p>
+    <div class="links">
+      <a href="lid.html">full writeup</a> |
+      <a href="https://github.com/azqzazq1/LID">github</a> |
+      <a href="https://doi.org/10.5281/zenodo.20257645">doi</a>
+    </div>
   </div>
-  <div class="links">
-    <a href="https://github.com/azqzazq1/SunnyMapBPF">github</a> &middot;
-    <a href="https://doi.org/10.5281/zenodo.20413161">doi</a>
+
+  <div class="research-item">
+    <h3>SunnyDayBPF</h3>
+    <div class="meta">telemetry deception | eBPF kprobe/kretprobe | post syscall</div>
+    <p>Post syscall observation layer deception via eBPF. Hooks read-like syscalls and rewrites data in user space buffers after the kernel writes it but before security agents parse it. The event still happens. The agent still reads data. But the data no longer represents the original event.</p>
+    <div class="links">
+      <a href="sunnydaybpf.html">full writeup</a> |
+      <a href="https://github.com/azqzazq1/SunnyDayBPF">github</a>
+    </div>
   </div>
-</div>
+
+  <div class="research-item">
+    <h3>SunnyMapBPF</h3>
+    <div class="meta">BPF map poisoning | Falco, Tracee, Tetragon | runtime monitor evasion</div>
+    <p>BPF map state poisoning against the three major eBPF runtime security monitors. A same-privilege process can overwrite policy maps, program arrays, and event routing tables to achieve complete telemetry suppression with zero errors, zero health check failures, and immediate effect.</p>
+    <div class="links">
+      <a href="sunnymapbpf.html">full writeup</a> |
+      <a href="https://github.com/azqzazq1/SunnyMapBPF">github</a> |
+      <a href="https://doi.org/10.5281/zenodo.20413161">doi</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== OPEN SOURCE ===== -->
+<section>
+  <h2>Open Source Tools</h2>
+
+  <div class="research-item">
+    <h3>Judozi</h3>
+    <div class="meta">Go | modular framework | kernel 2.6.22 to 6.7.1 | 19+ exploits</div>
+    <p>Modular offensive security framework written in pure Go. Ships as a zero-dependency 5.3MB static binary. The kernel module performs automatic version detection, exploit matching, and hybrid execution with GCC-free binary fallback. Covers 19+ kernel privilege escalation CVEs from DirtyCow to nf_tables UAF.</p>
+    <div class="links">
+      <a href="judozi.html">full writeup</a> |
+      <a href="https://github.com/past3l/judozi">github</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SKILLS ===== -->
+<section>
+  <h2>Skills</h2>
+  <div class="tag-list">
+    <span class="tag">web pentest</span>
+    <span class="tag">mobile pentest</span>
+    <span class="tag">cloud pentest</span>
+    <span class="tag">red teaming</span>
+    <span class="tag">API security</span>
+    <span class="tag">source code audit</span>
+    <span class="tag">vulnerability research</span>
+  </div>
+  <ul class="interests">
+    <li><strong>Web application penetration testing.</strong> Authentication and authorization flaws, injection vectors (SQL, SSTI, SSRF, XSS), business logic vulnerabilities, and access control bypasses across modern web stacks.</li>
+    <li><strong>Mobile application security.</strong> Static and dynamic analysis of Android and iOS applications, insecure data storage, certificate pinning bypass, and API backend exploitation.</li>
+    <li><strong>Cloud penetration testing.</strong> Kubernetes cluster security, container escape techniques, IAM misconfiguration exploitation, cloud metadata service abuse, and multi-tenant isolation boundary testing across AWS, GCP, and Azure environments.</li>
+    <li><strong>Red teaming.</strong> Full-scope adversary simulation from initial access through lateral movement to objective completion. Phishing, infrastructure compromise, privilege escalation, persistence, and defense evasion against mature security operations.</li>
+  </ul>
+</section>
+
+<!-- ===== BEYOND WORK ===== -->
+<section>
+  <h2>Beyond Work</h2>
+  <ul class="interests">
+    <li><strong>Combat sports.</strong> Training and competing. Discipline on the mat carries over to patience in research, both reward persistence over shortcuts.</li>
+    <li><strong>TF2 Spy.</strong> Thousands of hours as Spy in Team Fortress 2. Disguise, misdirection, and timing, not entirely unlike offensive security research.</li>
+  </ul>
+</section>
+
+<!-- ===== CONTACT ===== -->
+<section>
+  <h2>Contact</h2>
+  <ul class="contact-list">
+    <li><span>email</span> azqzazq@azqzazq1.blog</li>
+    <li><span>github</span> <a href="https://github.com/azqzazq1">azqzazq1</a></li>
+    <li><span>linkedin</span> <a href="https://linkedin.com/in/azqzazq">azqzazq</a></li>
+    <li><span>company</span> <a href="https://mileniumsec.com">mileniumsec.com</a></li>
+  </ul>
+</section>
 
 <hr>
-
-<footer>
-  Azizcan Dastan &middot; Milenium Security<br>
-  azqzazq1 at proton dot me
-</footer>
+<footer>Azizcan Dastan | Milenium Security | 2026</footer>
 
 </body>
 </html>
