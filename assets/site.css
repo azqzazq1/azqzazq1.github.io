@@ -16,3 +16,7 @@
 .hero>*,.now-section>*,.now-list article>div,.writing-layout>*{min-width:0}
 @media(max-width:380px){.hero h1{font-size:52px}.hero-actions{gap:16px}.hero-actions .button{gap:20px;padding-inline:16px}.now-section{padding-inline:20px}.now-section h2{font-size:38px}.now-list h3{overflow-wrap:anywhere}.card-meta{align-items:start}.costanza-card img{float:none;max-width:100%;width:170px;margin:10px auto}.recognition-row{gap:8px}}
 @media(max-width:720px){.now-section h2 br{display:initial}}
+
+/* Keep the expanded navigation comfortable on small screens. */
+.site-header nav{flex-wrap:wrap}.site-header nav a[aria-current="page"]{text-decoration:underline;text-decoration-color:var(--orange)}
+@media(max-width:380px){.site-header nav{gap:8px;font-size:11px}}
