@@ -1,0 +1,201 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>x86-64 from bits to VM exits — Azizcan Daştan</title><meta name="description" content="An in-depth x86-64 field guide for offensive security research: binary arithmetic, algorithms, registers, assembly, ABIs, paging, memory safety, CPU internals, VMX/SVM, and OWL0."><meta name="theme-color" content="#f5f3ec"><link rel="canonical" href="https://azqzazq1.blog/writing/x86-64-field-guide/"><meta property="og:type" content="article"><meta property="og:title" content="x86-64, from bits to VM exits"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css"><script defer src="/assets/site.js"></script><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"a53665957a294487b931af5fa119c3e1"}'></script></head><body><a class="skip-link" href="#main">Skip to content</a><header class="site-header wrap">
+<a class="brand" href="/" aria-label="Azizcan Daştan, home"><span class="brand-mark" aria-hidden="true">a.</span><span>azqzazq1<span class="brand-caption">show about everything</span></span></a>
+<nav aria-label="Main navigation"><a href="/#research">Research</a><a href="/writing/">Writing</a><a href="/#now">Now</a><a href="/#recognition">Recognition</a><a href="https://oopsie.azqzazq1.blog/">oopsie</a></nav>
+<a class="header-contact" href="mailto:kernel@azqzazq1.blog">Say hello <span aria-hidden="true">↗</span></a>
+</header><main id="main" class="article-shell wrap"><article class="prose"><a class="back" href="/writing/">← Back to the notebook</a><p class="eyebrow">DEEP DIVE / X86-64 / OWL0 · OCT 2026</p><h1>x86-64, from bits to VM exits.</h1>
+<p class="article-lede">An offensive researcher's x86-64 field guide: start with bits, addresses, arithmetic and data structures; reach disassembly, memory lifetimes, paging, VM exits, and OWL0. The goal is not to memorize mnemonics. It is to explain exactly which machine-level assumption failed.</p>
+<div class="editor-note"><strong>Scope and honesty.</strong><p>Primary target: Intel/AMD x86-64 on Linux. AMD64 and Intel 64 largely share the programmer model; VMX is Intel's virtualization architecture and SVM is AMD's. The examples are for a local, authorized research lab. OWL0 is a developing experiment, not a claim of invisibility.</p></div>
+<h2 id="map">0. The map of the machine</h2>
+<p>A program is not a stream of C statements to the CPU. It is a set of encoded instructions, mapped virtual pages, register transitions, exceptions, and interactions with privileged software. A useful researcher’s model has six layers: <strong>bits → instruction set → ABI → virtual memory → kernel contracts → virtualization</strong>. An exploit or detector crosses assumptions between layers, and an investigator must know what each boundary guarantees.</p>
+<p>Read the page in order, or use these chapter links: <a href="#math">binary &amp; math</a> · <a href="#data">data structures</a> · <a href="#registers">registers</a> · <a href="#assembly">assembly</a> · <a href="#abi">ABI</a> · <a href="#stack">stack</a> · <a href="#memory">paging</a> · <a href="#cpu">CPU internals</a> · <a href="#privilege">privilege</a> · <a href="#ownership">lifetimes</a> · <a href="#concurrency">concurrency</a> · <a href="#security">mitigations</a> · <a href="#vmx">VMX / SVM</a> · <a href="#owl">OWL0</a> · <a href="#lab">labs</a>.</p>
+<h2 id="math">1. Binary arithmetic is the hardware's language</h2>
+<p>A bit has two values, 0 or 1. An n-bit unsigned integer represents the interval <code>[0, 2ⁿ − 1]</code>. Eight bits yield 256 combinations, from 0 to 255; a 64-bit register has 2⁶⁴ possible bit patterns. An address is a pattern of bits, not inherently an object, integer, or pointer; its interpretation comes from the architecture and the code using it.</p>
+<p>Hexadecimal compresses binary: one hex digit represents four bits. <code>0xB6</code> is <code>1011 0110</code> in binary, or <code>11×16 + 6 = 182</code> in decimal. A byte is eight bits; a kibibyte is 2¹⁰ = 1,024 bytes; a 4 KiB page is 2¹² = 4,096 bytes. Keep KiB and KB distinct.</p>
+<pre><code>0x2f = 0010 1111₂ = 47₁₀
+0x1000 = 4096 = 2^12
+0xffff &amp; 0x00ff = 0x00ff
+0xA0 | 0x0F = 0xAF
+0x5A ^ 0xFF = 0xA5</code></pre>
+<p>Unsigned addition wraps modulo 2ⁿ: <code>UINT64_MAX + 1 = 0</code> for a 64-bit unsigned result. Two's-complement signed values use the top bit as their sign; <code>0xffffffffffffffff</code> interpreted as a signed 64-bit integer is −1. The hardware may produce the same bit pattern for signed and unsigned addition, while the language's overflow rules differ. In C, signed overflow is undefined behavior; unsigned overflow is defined modulo 2ⁿ.</p>
+<p>Left shifting by k usually multiplies an unsigned value by 2ᵏ when the result fits; right shifting an unsigned value divides by 2ᵏ, discarding remainder. Masking extracts fields. <code>(value &gt;&gt; 12) &amp; 0x1ff</code> selects nine bits starting at bit 12. The expression is everywhere in page-table walking. Do not shift by an amount equal to or larger than the width of the integer in C: that is undefined behavior.</p>
+<h3>Alignment, division and boundary mistakes</h3>
+<p>Objects are often aligned to powers of two. A 16-byte-aligned pointer has four low zero bits. For positive powers of two, <code>align_down(x, a) = x &amp; ~(a−1)</code> and <code>align_up(x, a) = (x+a−1)&amp;~(a−1)</code>, assuming enough width to avoid overflow. The addition in <code>align_up</code> is itself a security-sensitive operation: a wraparound can turn a large requested allocation into a small one.</p>
+<pre><code>size_t round_up(size_t n, size_t alignment) {
+    if (!alignment || (alignment &amp; (alignment - 1))) abort();
+    if (n &gt; SIZE_MAX - (alignment - 1)) abort();
+    return (n + alignment - 1) &amp; ~(alignment - 1);
+}</code></pre>
+<p>When investigating integer-overflow-to-buffer-overflow chains, write down <strong>the type and range of every intermediate expression</strong>, not just the final allocated size. A cast before multiplication can change the width; a cast after multiplication cannot undo overflow.</p>
+<h2 id="data">2. Data layouts, algorithms and invariants</h2>
+<p>Memory is a byte-addressed array, but real programs impose object layouts. A C struct can contain padding between fields and at the end. The compiler chooses offsets consistent with ABI alignment rules; layout is not simply “sum of field sizes.” Endianness defines byte order: on mainstream x86-64, <code>0x12345678</code> occupies adjacent bytes <code>78 56 34 12</code> from low to high address.</p>
+<pre><code>struct message {
+    uint8_t kind;       // offset 0
+    uint32_t length;    // typically offset 4
+    void *payload;      // typically offset 8 (LP64)
+};                    // typically 16 bytes total
+
+// Verify assumptions, don't guess:
+// printf("%zu %zu\n", sizeof(struct message),
+//        offsetof(struct message, payload));</code></pre>
+<p>Arrays use contiguous elements: <code>&amp;a[i] = base + i×sizeof(element)</code>. Lists use pointers; trees use child references; hash maps translate a key into a bucket and resolve collisions. Their <em>algorithmic</em> costs matter to security: hash collision storms can cause unanticipated CPU use, and quadratic scanning can turn user-controlled input into denial-of-service. Typical average hash-table lookup is O(1) under assumptions; worst-case may be O(n). A balanced tree is O(log n); linear scanning is O(n).</p>
+<p>For a ring buffer with capacity N, indices can advance modulo N; power-of-two capacities permit <code>index &amp; (N−1)</code> instead of modulo. But correctness also requires deciding when the buffer is full, who owns each slot, and when data becomes visible to another CPU. That final question is about memory ordering, not arithmetic.</p>
+<h2 id="registers">3. The architectural state: registers and flags</h2>
+<p>The general-purpose register set includes <code>RAX RBX RCX RDX RSI RDI RBP RSP R8–R15</code>. <code>RIP</code> tracks the next instruction. <code>RFLAGS</code> holds status and control flags. The low 32 bits of RAX are called EAX, the low 16 AX, and the low 8 AL. Writing EAX zero-extends into RAX in 64-bit mode; writing AX or AL does <strong>not</strong> clear the untouched upper bits.</p>
+<pre><code>mov rax, -1         ; RAX = ffffffffffffffff
+mov eax, 7          ; RAX = 0000000000000007
+mov al, 0x42        ; RAX = 0000000000000042
+lea rdx, [rip+msg]  ; RIP-relative address, useful for PIE</code></pre>
+<p><code>ZF</code> means an arithmetic/compare result was zero; <code>CF</code> reports carry/borrow in unsigned arithmetic; <code>SF</code> reflects the sign bit; <code>OF</code> indicates signed overflow. <code>cmp a,b</code> sets flags as though computing <code>a−b</code>, without storing the difference. Signed and unsigned branches differ: <code>jl</code> uses sign/overflow logic, while <code>jb</code> uses carry.</p>
+<p>SIMD/vector state is separate: XMM/YMM/ZMM registers process packed values with SSE/AVX extensions, subject to CPU feature detection and OS state support. A disassembler or crash report that only shows general registers may omit a relevant data path.</p>
+<h2 id="assembly">4. Read the instruction, then the effect</h2>
+<p>The two common assembly notations are Intel and AT&amp;T. These examples use Intel syntax: <code>mov destination, source</code>. An instruction can operate on immediate constants, registers or memory; the brackets in <code>[rax+8]</code> mean “dereference effective address RAX+8.” By contrast, <code>lea rax,[rbx+8]</code> calculates the address without dereferencing it.</p>
+<pre><code>mov rax, [rdi+8]    ; load an 8-byte value from memory
+mov [rdi+8], rax    ; store 8 bytes into memory
+lea rax, [rdi+8]    ; compute address, no load
+test rax, rax       ; set flags according to bitwise AND
+jz .null           ; branch if zero
+call do_work        ; push return address and transfer RIP
+ret                 ; pop return address into RIP</code></pre>
+<p>The instruction decoder sees variable-length x86 instructions. Not all byte offsets are instruction boundaries. Instructions have prefixes, opcodes, ModR/M, optional SIB, displacements and immediates. Source-level lines need not match one instruction each, and optimizers may inline, vectorize, remove or reorder work. This is why the actual binary is often the final authority in a security investigation.</p>
+<h3>A complete tiny control-flow example</h3>
+<pre><code>// C (for a local Linux lab)
+long absdiff(long a, long b) {
+    return a &gt; b ? a - b : b - a;
+}
+
+// Representative Intel-style logic (not a guaranteed compiler output):
+; a in RDI, b in RSI
+mov rax, rdi
+sub rax, rsi
+cmp rdi, rsi
+jg .done
+mov rax, rsi
+sub rax, rdi
+.done:
+ret</code></pre>
+<p>Observe the difference between <code>jmp</code> (unconditional), <code>call</code> (saves return address), and <code>ret</code> (restores it). Reconstruct a control-flow graph from branch targets. Questions for a researcher: which condition can attacker-controlled input influence, and does the value used for the check match the one used for the operation?</p>
+<h2 id="abi">5. ABI: calling conventions are executable contracts</h2>
+<p>For ordinary Linux userspace C functions under the <strong>System V AMD64 ABI</strong>, the first six integer or pointer arguments are normally passed in <code>RDI, RSI, RDX, RCX, R8, R9</code>; an integer return value usually arrives in RAX. Floating-point/vector arguments use XMM registers under separate classification rules. Remaining parameters and particular aggregate values can use the stack. The Windows x64 calling convention differs; do not apply it blindly to Linux.</p>
+<p>Syscalls have a <strong>different</strong> calling convention: the syscall number goes in <code>RAX</code>; arguments use <code>RDI, RSI, RDX, R10, R8, R9</code>. The <code>syscall</code> instruction overwrites RCX and R11 as part of its transition semantics. Userland also has a 128-byte red zone below RSP under the System V ABI; kernel and interrupt contexts cannot casually rely on that userspace rule.</p>
+<pre><code>// Linux x86-64 direct write(1, message, length) example.
+// This is illustrative assembly, not a replacement for libc.
+mov eax, 1             ; __NR_write
+mov edi, 1             ; stdout
+lea rsi, [rip+msg]
+mov edx, msg_len
+syscall                ; RCX and R11 clobbered</code></pre>
+<p>Which registers must be preserved by a callee? Which are caller-saved? The ABI answers. For common SysV calls, RBX, RBP and R12–R15 are callee-saved; RSP must be restored. A broken hand-written assembly routine can corrupt registers that another function was entitled to trust. Stack alignment at call sites matters, especially for SIMD instructions and compiler-generated code.</p>
+<h2 id="stack">6. Stack frames, return addresses and control flow</h2>
+<p>On x86-64 the stack normally grows toward lower virtual addresses. A <code>push</code> of a 64-bit register subtracts 8 from RSP and stores eight bytes. A <code>call</code> stores the return RIP; a <code>ret</code> loads a return address from the current stack. RBP may serve as a frame pointer, but optimized functions often omit it.</p>
+<pre><code>push rbp
+mov  rbp, rsp
+sub  rsp, 0x30   ; reserve local stack space
+...
+leave           ; equivalent to mov rsp, rbp; pop rbp
+ret</code></pre>
+<p>Classic stack corruption becomes dangerous when an unchecked write crosses from a buffer into control data, but real layouts vary with compiler, optimization, canaries and ABI choices. A buffer overflow is a bounds violation; exploitability additionally depends on reachability, corruption target, attacker control and mitigations. Never equate a debugger crash with reliable control-flow hijack.</p>
+<h2 id="memory">7. Addresses are translations, not direct locations</h2>
+<p>An x86-64 virtual address is translated through page tables before physical memory is accessed. With standard four-level paging, a 48-bit canonical virtual address splits into <code>9 + 9 + 9 + 9 + 12</code> bits: PML4 index, PDPT index, PD index, PT index, and byte offset. Each table has 512 entries because each 4 KiB page fits 4096/8 = 512 eight-byte entries.</p>
+<pre><code>pml4 = (va &gt;&gt; 39) &amp; 0x1ff;
+pdpt = (va &gt;&gt; 30) &amp; 0x1ff;
+pd   = (va &gt;&gt; 21) &amp; 0x1ff;
+pt   = (va &gt;&gt; 12) &amp; 0x1ff;
+off  =  va        &amp; 0xfff;</code></pre>
+<p>In four-level mode, canonical addresses sign-extend bit 47 into bits 48–63; noncanonical values fault. If enabled, LA57 five-level paging extends the scheme to 57-bit canonical virtual addresses with one more nine-bit level; do not assume every x86-64 machine uses exactly four levels. Large mappings may terminate earlier: 2 MiB pages at the PD level, 1 GiB pages at the PDPT level.</p>
+<p><code>CR3</code> identifies the active translation root (with details depending on enabled PCID mode). Page-table entries carry present, access, writable, user, accessed/dirty and execute-disable semantics subject to mode and feature support. A missing translation can raise a page fault (#PF), whose error code and faulting address in CR2 are critical forensic evidence. A virtual address alone never proves what bytes were physically read.</p>
+<h3>TLB and stale assumptions</h3>
+<p>The translation lookaside buffer caches translations and permissions. Editing a page-table entry does not magically make every CPU forget the previous translation; appropriate invalidation and synchronization are required. For kernel exploitation and hypervisors alike, ask: was the page-table content changed, was the cached translation invalidated, and which CPU might still carry stale state?</p>
+<h2 id="cpu">8. The CPU is more than its ISA</h2>
+<p>The architecture promises a programmer-visible result; microarchitecture determines how it is reached. Modern x86 CPUs decode instructions to internal operations, execute many out of order, predict branches, use reorder buffers, retire results in architectural order, and rely heavily on cache and TLB hierarchies. Architectural correctness is not the same as absence of timing information: speculation and caching can influence measurable latency.</p>
+<p>Keep three ideas separate: a <strong>data dependency</strong> means an operation needs another's result; a <strong>control dependency</strong> depends on which branch executes; a <strong>memory-ordering constraint</strong> governs when observers can see loads/stores. x86 typically has a stronger memory ordering model than many weakly ordered architectures, but it is not “everything is always sequential.” Compiler reorderings and atomic protocol design still matter.</p>
+<h2 id="privilege">9. CPL, rings, traps and kernel entry</h2>
+<p>Common Linux uses CPL3 for userspace and CPL0 for kernel code; x86 also defines rings 1 and 2, but mainstream Linux does not generally use them for normal processes. Exceptions, interrupts and syscalls move control to handlers through defined mechanisms. Privilege is not just a number attached to a pointer: it includes page permissions, descriptor tables, control registers, CPU modes and kernel authorization checks.</p>
+<p>An exception is generally associated with instruction execution, while external interrupts are delivered asynchronously. Distinguish a page fault (#PF), general protection fault (#GP), invalid opcode (#UD) and debug exception (#DB); each tells a different story. During a real kernel investigation, preserve the register frame, fault code, stack trace and the exact binary build before speculating about causality.</p>
+<h2 id="ownership">10. Pointer lifetime: the exploitability question</h2>
+<p>A pointer is a bit pattern representing an address. It does not prove that the originally referenced object still exists. A use-after-free happens when code dereferences a reference after the relevant object's lifetime ended. The allocator may reuse the address for an unrelated object, so “the memory still contains plausible bytes” does not mean the use is valid.</p>
+<pre><code>// Deliberately wrong: demonstrative userland UAF.
+struct record *p = malloc(sizeof(*p));
+p-&gt;count = 4;
+free(p);
+// p-&gt;count++;  // BUG: lifetime ended.
+
+// Narrower safe single-threaded pattern:
+free(p);
+p = NULL;
+// Never dereference it after release.</code></pre>
+<p>Setting one pointer to NULL is not sufficient if other aliases remain or another thread can race the release. Kernel lifetimes often involve reference counting, RCU grace periods, object caches and cancellation of asynchronous work. For each suspected UAF, build a timeline: <strong>allocation → reference acquisition → sharing → last release → possible reuse → stale dereference</strong>. Then prove reachability and the object's new role.</p>
+<p>The difference between a vulnerable-but-not-exploitable instance and an exploitable one often depends on reuse predictability, object layout, what fields are later interpreted, the attacker's control over replacement data, and defenses. There is no universal “UAF exploit”; there are concrete allocator and object-lifetime failures.</p>
+<h2 id="concurrency">11. Atomic operations, ABA and lock-free traps</h2>
+<p>A race exists when the outcome depends on unsynchronized ordering of operations. Ordinary reads and writes shared between threads without a proper synchronization protocol can be a C data race. Atomics express ordering and visibility, but choosing the right memory order requires understanding the algorithm's invariant.</p>
+<p>For a counter increment, a read-modify-write atomic can prevent lost updates. For a linked structure, compare-and-swap (CAS) can swap a pointer only if its current value matches an expected value. Yet CAS alone does not solve object reclamation. In the <strong>ABA problem</strong>, a location contains A, changes to B, then returns to A; a comparer notices “still A” while missing an intervening lifetime change. Generation counters, careful reference ownership, hazard pointers, epochs or RCU-style reclamation may be needed depending on the system.</p>
+<pre><code>// C11 illustration: atomicity of a counter, not a generic object lifetime fix.
+atomic_uint count = 0;
+atomic_fetch_add_explicit(&amp;count, 1, memory_order_relaxed);
+// Relaxed is enough for count uniqueness, not for publishing other data.</code></pre>
+<p>In kernel code, a lock may protect an object only until the lock is released; a reference might outlive the critical section. Treat <code>refcount_inc_not_zero()</code>, <code>kref_get()</code>, <code>kfree()</code> and asynchronous completions as points where an explicit lifetime argument is required. Draw happens-before edges, not merely “thread A happened first on my machine.”</p>
+<h2 id="security">12. Defenses: what each one does and does not promise</h2>
+<p><strong>ASLR</strong> randomizes relevant virtual mappings; <strong>PIE</strong> lets executables load at randomized bases; <strong>NX/XD</strong> marks pages non-executable; <strong>stack canaries</strong> attempt to detect certain stack overwrites; <strong>CFI/CET</strong> constrain some classes of control-flow abuse; <strong>SMEP</strong> restricts supervisor execution from user pages; <strong>SMAP</strong> restricts certain supervisor accesses to user pages unless deliberately enabled. <strong>KASLR</strong> randomizes kernel layout; <strong>KPTI</strong> separates selected user/kernel mappings to reduce exposure around Meltdown-class risks.</p>
+<p>Each defense has scope, prerequisite CPU and OS support, and a class of threats it addresses. Nothing here makes memory-safe code automatic. For vulnerability triage record the build configuration, mitigations and actual attack surface; do not claim bypasses from theory alone.</p>
+<h2 id="vmx">13. Virtualization: the boundary below the kernel</h2>
+<p>Modern hardware virtualization lets a virtual-machine monitor (VMM) run a guest operating system while controlling selected transitions and hardware resources. It does <em>not</em> simply make everything “ring −1”: the host controls VM entry/exit state, interception policies and guest execution. On Intel, VMX distinguishes <strong>VMX root</strong> and <strong>VMX non-root</strong> operation; privilege rings still exist inside the guest.</p>
+<p>The <strong>VMCS</strong> (virtual-machine control structure) describes guest/host state, execution controls and exit information. A VM entry transfers control into the guest; a VM exit transfers control to the VMM for a configured reason. Examples include certain control-register operations, privileged instructions, exceptions subject to intercept settings, and EPT violations. Not every instruction exits. Intercepting everything would be painfully slow; designing an experiment means choosing observations deliberately.</p>
+<pre><code>         HOST / VMM                      GUEST
+    +------------------+         +------------------+
+    | VMX root         | --entry-&gt;| VMX non-root     |
+    | VMCS controls    |         | kernel + user    |
+    | exit handler     |&lt;--exit--| intercepted event|
+    +------------------+         +------------------+
+            |                            |
+            +-- EPT maps guest-physical --+</code></pre>
+<p><strong>EPT</strong> (Extended Page Tables) adds another address translation layer: guest virtual → guest physical → host physical. The guest maintains its own page tables, and the VMM maintains EPT mappings. EPT permissions and faults/violations can create powerful visibility into selected guest-physical activity, but the observation has caveats: caching, timing, coverage, concurrent state changes and what the guest chooses to perform.</p>
+<p><strong>VPID</strong> helps tag guest translations. VMX features, including EPT and related invalidation instructions such as INVEPT/INVVPID, are conditional on CPU capabilities. A correct hypervisor must handle CPU feature probing, VMCS restrictions, exception delivery and multicore synchronization, not just obtain one successful VM entry.</p>
+<h3>AMD SVM is similar in purpose, different in machinery</h3>
+<p>On AMD, SVM uses a <strong>VMCB</strong> (virtual-machine control block), VMRUN and related instructions; nested paging is usually called <strong>NPT</strong>. AMD's control structures and exit fields differ from Intel's. OWL0 can conceptually discuss both but executable implementation details must target a specific vendor and revision. Avoid blending VMCS and VMCB as though they were interchangeable.</p>
+<h2 id="owl">14. OWL0: define the experiment, not a mythology</h2>
+<p>OWL0 explores an x86-64 hypervisor/isolated-service execution model and a specific question: <em>What can a guest OS, its instrumentation, and a lower-layer observer legitimately know about activity across their boundary?</em> A useful architecture model separates the Linux guest, a VMM or isolated runtime, a minimal service interface, and an external verifier.</p>
+<p>The experiment needs a <strong>threat model</strong> before code: Which adversary controls the guest? Is the VMM trusted? What telemetry sources are in scope (guest process list, syscalls, memory maps, host events, performance counters)? What observable effects remain (CPU time, memory traffic, device effects, timing)? “Not represented as a guest process” is a narrowly testable property; “invisible” is not a valid absolute conclusion.</p>
+<p>A minimal local-only key/value service can demonstrate a distinct execution boundary without pretending to escape physics. Begin with a deterministic request protocol, bounded input lengths, explicitly documented guest/VMM entry points, isolated memory ownership, logging on both sides and latency measurement. Compare a guest-side process monitor's observations against a hypervisor-side trace. Report what was and was not visible, and why.</p>
+<h3>A safe design sketch</h3>
+<pre><code>struct request {
+    uint32_t op;         // GET / PUT
+    uint32_t key_len;
+    uint32_t value_len;
+    uint32_t sequence;
+};
+// Validate sizes BEFORE copying or allocating.
+// Authenticate/authorize callers at the trust boundary.
+// Keep host-side measurements independent from guest logs.
+// Invariants: no cross-boundary pointer dereference;
+// bounded payload; explicit lifetime; no stale mappings.</code></pre>
+<p>Performance is part of correctness: VM exits are much more expensive than simple register operations; interception policy shapes your measurement. A request protocol that traps excessively may change the thing being observed. Distinguish architectural invisibility, reduced observability, and detector blind spots. Document limitations and avoid claims of “undetectable execution.”</p>
+<h2 id="lab">15. The offensive research lab: observe, falsify, repeat</h2>
+<p>Build a disposable Linux x86-64 VM (QEMU/KVM or an equivalent local setup), snapshot it, install compiler and debugging tools, and keep kernel/source versions pinned. Check <code>uname -a</code>, <code>lscpu</code>, <code>cat /proc/cpuinfo</code>, <code>readelf -h</code>, <code>objdump -d -Mintel</code>, <code>gdb</code>, <code>strace</code> and <code>perf</code> where appropriate. Be explicit about whether you're looking at the host or guest.</p>
+<pre><code># Compile a tiny userland program for inspection:
+cc -O0 -g -fno-omit-frame-pointer -o demo demo.c
+objdump -d -Mintel ./demo | less
+readelf -lW ./demo
+gdb -q ./demo
+# In gdb: break main; run; info registers; x/16gx $rsp; disassemble</code></pre>
+<p>Then repeat at <code>-O2</code> and compare frame layout, instruction selection and register allocation. Compile with sanitizers in a controlled lab to identify lifetimes and bounds mistakes. Use <code>pahole</code> to inspect DWARF/BTF type layouts where available. For the kernel, use appropriate symbols and a crash dump or debugger: a screenshot of a trace without build provenance is not evidence.</p>
+<h3>Six exercises worth keeping in your notebook</h3>
+<ol>
+<li><strong>Arithmetic:</strong> Calculate the 4 KiB page number and offset for several addresses by hand. Verify with shifts and masks.</li>
+<li><strong>Assembly:</strong> Compare <code>mov eax</code>, <code>mov ax</code>, and <code>mov al</code> effects on RAX using GDB.</li>
+<li><strong>ABI:</strong> Trace six and then eight arguments across an optimized Linux function call, including stack alignment.</li>
+<li><strong>Ownership:</strong> Draw every reference acquisition and release for a deliberately small queue. Insert cancellation mid-flight.</li>
+<li><strong>Translation:</strong> Walk a four-level page-table decomposition; explain a missing page and a protection fault separately.</li>
+<li><strong>Virtualization:</strong> Record guest observations and VMM-side event counts for a harmless synthetic service request; report gaps, overhead and uncertainty rather than promising stealth.</li>
+</ol>
+<h2 id="checklist">16. The checklist I want beside a crash report</h2>
+<p>What is the exact instruction? What registers and memory values feed it? Who owns the referenced object, and is that ownership current? Are bounds computed in the same type/width as the allocation? Which concurrency edge establishes ordering? Which virtual-to-physical translation and permissions apply? Which policy boundary is supposed to check the operation? Which layer made the observation and what could that layer not see?</p>
+<p>That is the common thread from a one-byte overflow to an EPT experiment: <strong>the machine is deterministic about its contracts, and researchers get into trouble when they silently invent extra guarantees.</strong></p>
+<h2 id="sources">References for deeper study</h2>
+<ul>
+<li><a href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html">Intel® 64 and IA-32 Architectures Software Developer's Manuals</a> — instruction behavior, memory model, VMX and system programming.</li>
+<li><a href="https://www.amd.com/en/search/documentation/hub.html">AMD processor programming manuals</a> — AMD64 programmer's model and SVM/NPT.</li>
+<li><a href="https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf">System V AMD64 ABI (x86-64 supplement)</a> — Linux userspace calling conventions and data layout.</li>
+<li><a href="https://docs.kernel.org/">Linux kernel documentation</a> — memory, locking, RCU, paging, LSM and architecture internals.</li>
+<li><a href="/owl0/">OWL0 research notebook</a> and <a href="/writing/">the writing archive</a>.</li>
+</ul>
+<p><em>Last updated October 2026. Learning material and research methodology, not an assertion that OWL0 has implemented every capability discussed.</em></p>
+</article></main><footer class="site-footer wrap"><div><a class="footer-name" href="/">Azizcan Daştan<span class="accent">.</span></a><p>show about everything</p></div><div class="footer-links"><a href="https://github.com/azqzazq1">GitHub ↗</a><a href="https://linkedin.com/in/azqzazq">LinkedIn ↗</a><a href="mailto:kernel@azqzazq1.blog">Email ↗</a></div><div class="colophon">© 2026 · Independent research<br>HTML, CSS &amp; a little JavaScript.</div></footer></body></html>
