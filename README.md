@@ -20,8 +20,8 @@ Open http://127.0.0.1:8765. There is no build step.
 - `assets/site.css`: shared responsive layout and article typography.
 - `assets/site.js`: optional writing filters; all content remains accessible without JavaScript.
 - Existing article URLs (`lid.html`, `sunnydaybpf.html`, `sunnymapbpf.html`, `judozi.html`) remain intact. The original technical text and diagrams are historical research snapshots, with scope notices and current repository links.
-- `disclosures.html`, `owl0.html`, `costanza-corner.html`: disclosure notes, experiment scope and personal writing.
-- For a new post, copy the structure of `owl0.html`, edit title, description, canonical and Open Graph metadata, then add a writing-list entry and sitemap URL. Use `data-category="research"` or `"personal"`.
+- `disclosures.html`, `owl0.html`, `costanza-corner.html`: disclosure notes, the OWL0 technical essay and personal writing.
+- For a new post, copy the shared shell of `disclosures.html`, edit title, description, canonical and Open Graph metadata, then add a writing-list entry and sitemap URL. Use `data-category="research"` or `"personal"`.
 - Update the explicit “Currently exploring” date when reviewing that content; it does not auto-update to imply new research.
 
 ## Content provenance (reviewed 2026-10-19)
@@ -42,3 +42,9 @@ The CSS boundary diagram, favicon and `assets/coffee-break.svg` were created for
 
 Contact: `kernel@azqzazq1.blog`. Motto: “show about everything”.
 `oopsie.html` is the intentionally empty kernel-notes page linked from every header. Replace its main content when the notebook is ready, preserving the shared navigation and metadata.
+
+## OWL0 essay
+
+`owl0.html` is a sourced research essay with six original figures. `assets/owl0.css` and `assets/owl0.js` provide its responsive layout, VM-exit stepper, canonical-address decoder, permission model and hypothetical exit-budget chart. The complete article and static examples remain readable without JavaScript. Models are illustrative and do not claim OWL0 benchmark results or implemented features. Primary references are listed in the article.
+
+Validation: local links and IDs, JavaScript syntax, LA48 canonical-address boundaries, budget arithmetic, interactive controls, and 320/390/768/1280px layouts. No runtime dependencies or build step were added.
