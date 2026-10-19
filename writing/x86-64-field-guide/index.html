@@ -186,7 +186,58 @@ gdb -q ./demo
 <li><strong>Translation:</strong> Walk a four-level page-table decomposition; explain a missing page and a protection fault separately.</li>
 <li><strong>Virtualization:</strong> Record guest observations and VMM-side event counts for a harmless synthetic service request; report gaps, overhead and uncertainty rather than promising stealth.</li>
 </ol>
-<h2 id="checklist">16. The checklist I want beside a crash report</h2>
+
+<h2 id="elf">16. ELF, relocation, and why the binary is not the source</h2>
+<p>Linux executables and shared libraries commonly use ELF. An ELF file has headers, program headers describing loadable segments, and optional sections used by linkers or debugging tools. For understanding execution, program headers matter more than section names: the loader creates mappings, applies relocations as appropriate, and transfers control through the runtime entry sequence. <code>readelf -lW</code> shows LOAD segments and their permissions; <code>readelf -rW</code> shows relocations; <code>objdump -drwC -Mintel</code> is useful for code and symbols.</p>
+<p>Position-independent executables (PIE) use relocatable code and are commonly loaded at a randomized base under ASLR. <strong>RIP-relative addressing</strong> makes references to nearby data practical without a fixed load address. Dynamic linking adds symbol resolution through structures such as the Global Offset Table (GOT) and Procedure Linkage Table (PLT), subject to architecture, linker options, and relocation strategy. RELRO constrains writable relocation state; full and partial RELRO differ. None of these facts license assumptions about a particular binary: inspect its flags.</p>
+<pre><code># See actual ELF loading facts for a local test binary.
+readelf -hW ./demo
+readelf -lW ./demo
+readelf -rW ./demo
+objdump -drwC -Mintel ./demo | less
+# In gdb: info files; info proc mappings</code></pre>
+<p>Symbols and debug info provide names and source correspondence but do not change what the CPU executes. With optimization, one source variable may live in several registers, be merged into an expression, or disappear. A symbolic address without a matching build ID, compiler flags, and linked libraries is an uncertain attribution.</p>
+<h2 id="bitwise">17. Boolean algebra, entropy and a precise integer-overflow chain</h2>
+<p>At the bit level, AND selects intersection, OR combines set bits, XOR toggles differences, and NOT complements a word. Each operation is vectorized across bits. For a mask with ones in positions 3–6, <code>(x &gt;&gt; 3) &amp; 0xF</code> yields a four-bit field; for a boolean flag set, <code>x | (1u &lt;&lt; k)</code> sets bit k, while <code>x &amp; ~(1u &lt;&lt; k)</code> clears it. Keep signedness and width explicit so the shift is not accidentally done in a too-small type.</p>
+<p>In security work, entropy often quantifies uncertainty. A perfectly uniform k-bit random choice has k bits of entropy; guessing probability for one independent attempt is 1/2ᵏ. Real address-space randomization is not necessarily uniform across all 64 bits; alignment, virtual address layouts, process behavior and platform policy limit the actual choices. You cannot read “64-bit CPU” as “64 bits of ASLR entropy.”</p>
+<pre><code>/* Deliberately vulnerable logic: product may wrap before allocation. */
+size_t bytes = count * sizeof(struct item);
+struct item *items = malloc(bytes);
+/* Writing count elements may exceed the allocation after wrap. */
+
+/* Correct check: validate BEFORE multiplication. */
+if (count &gt; SIZE_MAX / sizeof(struct item)) return -1;
+size_t bytes_ok = count * sizeof(struct item);
+struct item *safe = malloc(bytes_ok);
+if (!safe &amp;&amp; bytes_ok != 0) return -1;</code></pre>
+<p>The root cause is not the mere existence of multiplication. The invariant is that allocated capacity must be at least the total bytes later written; an overflowing calculation breaks that invariant. A exploitability analysis then separates input control, allocation behavior, subsequent write, memory layout and available mitigations.</p>
+<h2 id="worked-pagewalk">18. Work a page-table split with real numbers</h2>
+<p>Take a canonical 48-bit virtual address. The low 12 bits are the offset within its 4 KiB page. The next four groups of nine bits choose indices in the PT, PD, PDPT and PML4 structures. For <code>0x00007fff12345678</code>, the page offset is <code>0x678</code>; masking and shifting produce indices you can calculate independently. The point of doing this by hand is to make a page walk an arithmetic claim you can challenge, not a mystical lookup.</p>
+<pre><code>uint64_t va = 0x00007fff12345678ULL;
+unsigned offset = va &amp; 0xfff;
+unsigned pt     = (va &gt;&gt; 12) &amp; 0x1ff;
+unsigned pd     = (va &gt;&gt; 21) &amp; 0x1ff;
+unsigned pdpt   = (va &gt;&gt; 30) &amp; 0x1ff;
+unsigned pml4   = (va &gt;&gt; 39) &amp; 0x1ff;
+// Check the indices with a calculator and a page-table visualizer.
+// Then ask: are we in four-level mode or LA57?</code></pre>
+<p>For a 2 MiB huge page, translation can terminate at the directory level. The low 21 bits then give the within-page offset, rather than following an ordinary 4 KiB PT entry. For a 1 GiB page, the low 30 bits identify the offset. These differences matter when a debugger, page-table walker or a VMM assumes every mapping descends to a PT.</p>
+<p>For nested translation, write the path explicitly: <code>GVA --guest tables--&gt; GPA --EPT/NPT--&gt; HPA</code>. A failure in the guest page walk and a denial in the nested page walk are not interchangeable events. If your tracing tooling reports only one fault category, the missing distinction may distort the investigation.</p>
+<h2 id="control-state">19. Control registers, exceptions and system structures</h2>
+<p><code>CR0</code> contains fundamental execution-mode controls; <code>CR4</code> contains controls for features such as PAE, VMX enabling, SMEP and SMAP when available; <code>EFER</code> includes long-mode and execute-disable related state, subject to architecture/vendor specifics. <code>CR2</code> holds a linear address associated with a page fault. <code>CR3</code> points to address-translation state. These values explain far more than a random dump of general-purpose registers in many kernel faults.</p>
+<p>The Global Descriptor Table (GDT) provides segment-descriptor machinery with reduced segmentation roles in 64-bit mode, while FS and GS bases remain important for thread-local/per-CPU contexts. The Interrupt Descriptor Table (IDT) identifies exception and interrupt entry points. Privilege level changes must use architecturally defined transitions rather than arbitrary jumps into kernel addresses. System calls, exceptions and interrupts have distinct state-transfer rules.</p>
+<p><code>MSR</code>s (model-specific registers) extend the control/measurement surface. Intel and AMD have vendor-specific MSR maps, while some architecturally named ones control syscall entry, features and performance monitoring. Reading or writing privileged state requires appropriate execution context; invalid or unsupported accesses can fault. A VMM must not assume that every control bit it wants is supported merely because the instruction-set family is x86-64.</p>
+<h2 id="vmx-engineering">20. VMX engineering questions for a serious OWL0 prototype</h2>
+<p>On Intel VMX, a working prototype needs more than <code>VMXON</code> and a triumphant screenshot. There are feature/control checks, a suitable VMXON region, a valid VMCS with guest/host state, exception/exit configuration, permitted control fields, and correct entry/exit handling. VM entry has validation rules; failure modes are important evidence. Host stack and state restoration after VM exits must be correct before any meaningful study begins.</p>
+<p>The VMCS stores controls, guest state, host state, and exit information. Exit reason and qualification must be interpreted according to the architectural manuals, not a random constant found in a blog. The VMM should maintain a small, well-defined event record containing a sequence ID, timebase, exit reason, relevant guest RIP and known uncertainty. If the experiment is multi-core, per-CPU state and coordination belong in the design from day one.</p>
+<p>Event instrumentation is a selection problem. Intercepting frequent operations may perturb guest execution significantly. Capturing too little misses causal context. A measurement table should include guest workload, enabled controls, exit counts, time cost and whether the detector runs inside or outside the guest. Compare equivalent runs before and after instrumentation; avoid drawing global conclusions from a single surprising trace.</p>
+<p>On AMD SVM the corresponding details require AMD's VMCB, VMRUN interception and nested translation rules, not a textual search-and-replace from VMCS terminology. A portable research description can unify goals; the implementation cannot ignore hardware differences.</p>
+<h2 id="uaf-research">21. A researcher’s method for an x86-64 kernel crash</h2>
+<p>Start with a pinned test kernel, debug symbols and a reproducible input in an isolated VM. Record the exact faulting instruction, register values, stack pointer, page-fault/error context when relevant, and the owning object type. Use KASAN/KFENCE or other available diagnostics to strengthen lifetime/bounds evidence in a lab; treat reports as evidence, not as an automatic exploit verdict.</p>
+<p>Next build two graphs: a <strong>control-flow graph</strong> for the path to the fault and an <strong>ownership graph</strong> for the object. Find every allocation, handoff, refcount transition, asynchronous callback and release, including failure paths. The interesting edge is often not where the crash occurred but where a previously valid reference ceased to be valid.</p>
+<p>Then test a narrowly falsifiable hypothesis: “Request cancellation frees object X while callback Y can still dereference its field Z without owning a reference.” Look for a minimal local reproduction and an independently verifiable state transition. A failed reproduction is not proof of safety; a successful crash is not proof of exploitation.</p>
+<p>For a security report, distinguish <strong>root cause</strong>, <strong>triggerability</strong>, <strong>security impact</strong> and <strong>mitigation state</strong>. Each step demands evidence. Low-level research becomes credible when the timeline survives skeptical inspection.</p>
+<h2 id="checklist">22. The checklist I want beside a crash report</h2>
 <p>What is the exact instruction? What registers and memory values feed it? Who owns the referenced object, and is that ownership current? Are bounds computed in the same type/width as the allocation? Which concurrency edge establishes ordering? Which virtual-to-physical translation and permissions apply? Which policy boundary is supposed to check the operation? Which layer made the observation and what could that layer not see?</p>
 <p>That is the common thread from a one-byte overflow to an EPT experiment: <strong>the machine is deterministic about its contracts, and researchers get into trouble when they silently invent extra guarantees.</strong></p>
 <h2 id="sources">References for deeper study</h2>
