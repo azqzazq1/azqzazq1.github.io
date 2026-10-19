@@ -1,47 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LID | Linux Integrity Drift</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Times New Roman', Times, serif; background: #ffffff; color: #333333; max-width: 1080px; margin: 0 auto; padding: 48px 40px; line-height: 1.8; }
-  a { color: #2563eb; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .back { font-size: 0.85em; margin-bottom: 32px; display: inline-block; }
-  h1 { color: #111; font-size: 1.8em; margin-bottom: 4px; }
-  .subtitle { color: #888; font-size: 0.95em; margin-bottom: 32px; }
-  h2 { color: #111; font-size: 1.2em; margin: 40px 0 16px 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
-  h3 { color: #111; font-size: 1.05em; margin: 28px 0 10px 0; }
-  p { font-size: 0.92em; color: #444; margin-bottom: 14px; }
-  p strong { color: #222; }
-  code { font-family: 'Courier New', monospace; font-size: 0.88em; background: #f5f5f5; padding: 1px 5px; border-radius: 3px; }
-  .tag { display: inline-block; font-size: 0.72em; padding: 2px 8px; margin: 2px 3px 2px 0; background: #eef2ff; color: #2563eb; border-radius: 2px; }
-  .tag.red { background: #fef2f2; color: #dc2626; }
-  .diagram { margin: 28px 0; text-align: center; overflow-x: auto; }
-  .diagram svg { max-width: 100%; height: auto; }
-  .finding { border-left: 3px solid #2563eb; padding: 16px 0 16px 20px; margin-bottom: 28px; background: #fafbff; }
-  .finding.critical { border-left-color: #dc2626; }
-  .finding h3 { margin-top: 0; }
-  .finding .severity { font-size: 0.78em; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-  .finding .severity.crit { color: #dc2626; }
-  .finding .severity.high { color: #ea580c; }
-  .finding .severity.med { color: #ca8a04; }
-  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px 0; font-size: 0.85em; }
-  th { background: #f8f9fa; color: #111; text-align: left; padding: 10px 12px; border-bottom: 2px solid #e0e0e0; }
-  td { padding: 8px 12px; border-bottom: 1px solid #eee; color: #444; }
-  .links { font-size: 0.85em; margin-top: 32px; }
-  hr { border: none; border-top: 1px solid #e0e0e0; margin: 44px 0; }
-  footer { font-size: 0.75em; color: #aaa; }
-  .quote { border-left: 3px solid #ddd; padding: 8px 16px; margin: 16px 0; font-style: italic; color: #666; font-size: 0.9em; }
-</style>
-</head>
-<body>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LID | Linux Integrity Drift — Azizcan Daştan</title>
+<meta name="description" content="Research notes by Azizcan Daştan on LID. Original diagrams and technical discussion, with links to current source material.">
+<meta name="theme-color" content="#f5f3ec">
+<link rel="canonical" href="https://azqzazq1.blog/lid.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LID | Linux Integrity Drift — Azizcan Daştan">
+<meta property="og:description" content="Research notes by Azizcan Daştan on LID. Original diagrams and technical discussion, with links to current source material.">
+<meta property="og:url" content="https://azqzazq1.blog/lid.html">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/lid.css">
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/site.js" defer></script>
+</head><body class="legacy-article"><a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header wrap">
+<a class="brand" href="/" aria-label="Azizcan Daştan, home"><span class="brand-mark" aria-hidden="true">a.</span><span>azqzazq1<span class="brand-caption">security research / personal notes</span></span></a>
+<nav aria-label="Main navigation"><a href="/#research">Research</a><a href="/#writing">Writing</a><a href="/#now">Now</a><a href="/#recognition">Recognition</a></nav>
+<a class="header-contact" href="mailto:azqzazq@azqzazq1.blog">Say hello <span aria-hidden="true">↗</span></a>
+</header><main id="main" class="article-shell wrap"><article class="prose"><a class="back" href="/#research">← Back to research</a><p class="eyebrow">RESEARCH ARCHIVE / LID</p>
 
-<a class="back" href="index.html">Azizcan Dastan</a>
 
-<h1>LID | Linux Integrity Drift</h1>
+
+<h1>LID | Linux Integrity Drift</h1><aside class="editor-note"><strong>Reading note · October 2026</strong><p>This earlier write-up documents the original research snapshot. Results are specific to the tested versions, privileges, and configuration; consult the linked repository for current scope. LID findings have different prerequisites and affected LSMs: AppArmor pathname behavior must not be generalized to SELinux, and AF_XDP concerns networking policy rather than every LSM.</p><a href="https://github.com/azqzazq1/LID">Current research repository ↗</a></aside>
 <div class="subtitle">Systematic discovery of kernel code paths that bypass LSM security hooks</div>
 
 <div>
@@ -68,7 +51,7 @@
 
 <p>The kernel uses the <code>call_int_hook</code> macro to iterate through registered security modules. Each module returns 0 (allow) or nonzero (deny). The loop short-circuits on the first denial, ensuring modules can only add restrictions.</p>
 
-<div class="diagram">
+<div class="diagram" role="region" aria-label="Research diagram" tabindex="0">
 <svg viewBox="0 0 760 420" xmlns="http://www.w3.org/2000/svg">
   <!-- Background -->
   <rect x="0" y="0" width="760" height="420" fill="#fafbff" rx="8"/>
@@ -158,7 +141,7 @@
 
 <h2>Five Findings</h2>
 
-<div class="diagram">
+<div class="diagram" role="region" aria-label="Research diagram" tabindex="0">
 <svg viewBox="0 0 760 260" xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="0" width="760" height="260" fill="#fafbff" rx="8"/>
   <text x="380" y="28" text-anchor="middle" font-family="Times New Roman" font-size="14" fill="#111" font-weight="bold">LID Finding Overview</text>
@@ -253,7 +236,7 @@
   <p>A BPF kprobe attached to <code>do_sys_openat2</code> uses <code>bpf_probe_write_user</code> to rewrite the filename in the user space buffer before the kernel copies it. Combined with a hard link at an AppArmor-allowed path, the kernel resolves the rewritten path, AppArmor evaluates the allowed path instead of the denied one, and the access succeeds with zero audit trace.</p>
   <p>The attack exploits a fundamental gap between AppArmor's pathname-based access control model and eBPF's ability to operate before any LSM hook fires. Two hard links to the same inode are treated as entirely different files by AppArmor policy. The BPF program selectively targets specific process and path combinations, making the bypass transparent, selective, and audit-invisible.</p>
 
-  <div class="diagram">
+  <div class="diagram" role="region" aria-label="Research diagram" tabindex="0">
   <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
     <rect x="0" y="0" width="720" height="300" fill="#fff8f8" rx="6"/>
     <text x="360" y="24" text-anchor="middle" font-family="Times New Roman" font-size="13" fill="#111" font-weight="bold">LID-001: Pathname Rewriting Attack Flow</text>
@@ -313,7 +296,7 @@
   </svg>
   </div>
 
-  <table>
+  <div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
     <tr><th>Property</th><th>Value</th></tr>
     <tr><td>Hook bypassed</td><td>All pathname-based LSM checks</td></tr>
     <tr><td>Prerequisite</td><td>CAP_BPF + CAP_PERFMON (or root)</td></tr>
@@ -321,7 +304,7 @@
     <tr><td>SELinux visibility</td><td>Sees bypass path, not original</td></tr>
     <tr><td>Selectivity</td><td>Per process, per path</td></tr>
     <tr><td>Reversibility</td><td>Removing BPF program restores enforcement</td></tr>
-  </table>
+  </table></div>
 </div>
 
 <div class="finding critical">
@@ -330,14 +313,14 @@
   <p>The io_uring MSG_RING operation allows one io_uring instance to inject a file descriptor into another ring's fixed file table. This fd transfer completely bypasses <code>security_file_receive()</code>, the LSM hook that AppArmor and SELinux rely on for cross-process file descriptor validation.</p>
   <p>Unlike other LID findings, this vector operates from <strong>unprivileged userspace</strong> with no special capabilities required. A regular user can transfer arbitrary file descriptors between io_uring instances without any LSM evaluation. The transferred fd is invisible to every registered security module.</p>
 
-  <table>
+  <div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
     <tr><th>Property</th><th>Value</th></tr>
     <tr><td>Hook bypassed</td><td><code>security_file_receive()</code></td></tr>
     <tr><td>Prerequisite</td><td>None (unprivileged)</td></tr>
     <tr><td>All LSMs blind</td><td>Yes</td></tr>
     <tr><td>Crosses privilege boundary</td><td>Yes</td></tr>
     <tr><td>Kernel version</td><td>5.18+ (MSG_RING introduction)</td></tr>
-  </table>
+  </table></div>
 </div>
 
 <div class="finding">
@@ -345,13 +328,13 @@
   <h3>New Mount API Bypass</h3>
   <p>The new mount API introduced with <code>fsopen()</code>, <code>fsmount()</code>, and <code>move_mount()</code> bypasses <code>security_sb_mount()</code>, which is the primary hook that AppArmor and SELinux use to enforce mount policy. The new API path performs mount operations through a different code path that was never wired into the existing LSM mount hook.</p>
 
-  <table>
+  <div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
     <tr><th>Property</th><th>Value</th></tr>
     <tr><td>Hook bypassed</td><td><code>security_sb_mount()</code></td></tr>
     <tr><td>Syscalls</td><td><code>fsopen</code>, <code>fsmount</code>, <code>move_mount</code></td></tr>
     <tr><td>Impact</td><td>Mount policy enforcement bypassed</td></tr>
     <tr><td>Prerequisite</td><td>Mount privileges in namespace</td></tr>
-  </table>
+  </table></div>
 </div>
 
 <div class="finding">
@@ -359,13 +342,13 @@
   <h3>BPF Token AppArmor Blindness</h3>
   <p>The BPF token subsystem (kernel 6.9+) introduces nine security hooks for token creation, delegation, and usage. AppArmor implements <strong>zero</strong> of these nine hooks. Any BPF token operation occurs with complete AppArmor blindness, no policy evaluation, and no audit logging.</p>
 
-  <table>
+  <div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
     <tr><th>Property</th><th>Value</th></tr>
     <tr><td>Hooks missing</td><td>9 out of 9 BPF token hooks</td></tr>
     <tr><td>AppArmor coverage</td><td>0%</td></tr>
     <tr><td>Kernel version</td><td>6.9+</td></tr>
     <tr><td>Impact</td><td>Full BPF token delegation without MAC</td></tr>
-  </table>
+  </table></div>
 </div>
 
 <div class="finding">
@@ -373,18 +356,18 @@
   <h3>AF_XDP tc Egress Bypass</h3>
   <p>Raw network frames transmitted through AF_XDP sockets bypass the tc (traffic control) egress path entirely. Container environments that rely on tc filters for network policy enforcement (including some configurations of Docker and plain iptables setups) are blind to AF_XDP transmitted traffic. The frames go directly to the NIC driver queue, skipping all tc qdisc and filter processing.</p>
 
-  <table>
+  <div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
     <tr><th>Property</th><th>Value</th></tr>
     <tr><td>Bypassed layer</td><td>tc egress filters</td></tr>
     <tr><td>Prerequisite</td><td>CAP_NET_RAW + AF_XDP support</td></tr>
     <tr><td>Cilium affected</td><td>No (uses XDP/BPF hooks)</td></tr>
     <tr><td>Plain Docker affected</td><td>Yes (tc based filtering)</td></tr>
-  </table>
+  </table></div>
 </div>
 
 <h2>Visibility Gap Matrix</h2>
 
-<table>
+<div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
   <tr>
     <th>Finding</th>
     <th>Visibility Gap</th>
@@ -427,7 +410,7 @@
     <td>CAP_NET_RAW</td>
     <td>tc based filters</td>
   </tr>
-</table>
+</table></div>
 
 <h2>Architectural Implications</h2>
 
@@ -442,8 +425,6 @@
   <a href="https://doi.org/10.5281/zenodo.20257645">DOI: 10.5281/zenodo.20257645</a>
 </div>
 
-<hr>
-<footer>Azizcan Dastan | Milenium Security | 2026</footer>
 
-</body>
-</html>
+
+</article></main><footer class="site-footer wrap"><div><a class="footer-name" href="/">Azizcan Daştan<span class="accent">.</span></a><p>Looking closely at the things we trust.</p></div><div class="footer-links"><a href="https://github.com/azqzazq1">GitHub ↗</a><a href="https://linkedin.com/in/azqzazq">LinkedIn ↗</a><a href="mailto:azqzazq@azqzazq1.blog">Email ↗</a></div><div class="colophon">© 2026 · Independent research<br>HTML, CSS &amp; a little JavaScript.</div></footer></body></html>

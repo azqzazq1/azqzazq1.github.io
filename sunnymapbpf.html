@@ -1,48 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SunnyMapBPF | BPF Map State Poisoning</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Times New Roman', Times, serif; background: #ffffff; color: #333333; max-width: 1080px; margin: 0 auto; padding: 48px 40px; line-height: 1.8; }
-  a { color: #2563eb; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .back { font-size: 0.85em; margin-bottom: 32px; display: inline-block; }
-  h1 { color: #111; font-size: 1.8em; margin-bottom: 4px; }
-  .subtitle { color: #888; font-size: 0.95em; margin-bottom: 32px; }
-  h2 { color: #111; font-size: 1.2em; margin: 40px 0 16px 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
-  h3 { color: #111; font-size: 1.05em; margin: 28px 0 10px 0; }
-  p { font-size: 0.92em; color: #444; margin-bottom: 14px; }
-  p strong { color: #222; }
-  code { font-family: 'Courier New', monospace; font-size: 0.88em; background: #f5f5f5; padding: 1px 5px; border-radius: 3px; }
-  .tag { display: inline-block; font-size: 0.72em; padding: 2px 8px; margin: 2px 3px 2px 0; background: #eef2ff; color: #2563eb; border-radius: 2px; }
-  .tag.red { background: #fef2f2; color: #dc2626; }
-  .diagram { margin: 28px 0; text-align: center; overflow-x: auto; }
-  .diagram svg { max-width: 100%; height: auto; }
-  .quote { border-left: 3px solid #ddd; padding: 8px 16px; margin: 16px 0; font-style: italic; color: #666; font-size: 0.9em; }
-  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px 0; font-size: 0.85em; }
-  th { background: #f8f9fa; color: #111; text-align: left; padding: 10px 12px; border-bottom: 2px solid #e0e0e0; }
-  td { padding: 8px 12px; border-bottom: 1px solid #eee; color: #444; }
-  .tool-section { border-left: 3px solid #2563eb; padding: 16px 0 16px 20px; margin-bottom: 28px; background: #fafbff; }
-  .tool-section h3 { margin-top: 0; }
-  .result-zero { color: #dc2626; font-weight: bold; }
-  .result-normal { color: #16a34a; }
-  .links { font-size: 0.85em; margin-top: 32px; }
-  hr { border: none; border-top: 1px solid #e0e0e0; margin: 44px 0; }
-  footer { font-size: 0.75em; color: #aaa; }
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 20px 0; }
-  .stat-box { background: #fafbff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px; text-align: center; }
-  .stat-box .number { font-size: 2em; font-weight: bold; color: #dc2626; }
-  .stat-box .label { font-size: 0.8em; color: #888; margin-top: 4px; }
-</style>
-</head>
-<body>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SunnyMapBPF | BPF Map State Poisoning — Azizcan Daştan</title>
+<meta name="description" content="Research notes by Azizcan Daştan on SunnyMapBPF. Original diagrams and technical discussion, with links to current source material.">
+<meta name="theme-color" content="#f5f3ec">
+<link rel="canonical" href="https://azqzazq1.blog/sunnymapbpf.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SunnyMapBPF | BPF Map State Poisoning — Azizcan Daştan">
+<meta property="og:description" content="Research notes by Azizcan Daştan on SunnyMapBPF. Original diagrams and technical discussion, with links to current source material.">
+<meta property="og:url" content="https://azqzazq1.blog/sunnymapbpf.html">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/sunnymapbpf.css">
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/site.js" defer></script>
+</head><body class="legacy-article"><a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header wrap">
+<a class="brand" href="/" aria-label="Azizcan Daştan, home"><span class="brand-mark" aria-hidden="true">a.</span><span>azqzazq1<span class="brand-caption">security research / personal notes</span></span></a>
+<nav aria-label="Main navigation"><a href="/#research">Research</a><a href="/#writing">Writing</a><a href="/#now">Now</a><a href="/#recognition">Recognition</a></nav>
+<a class="header-contact" href="mailto:azqzazq@azqzazq1.blog">Say hello <span aria-hidden="true">↗</span></a>
+</header><main id="main" class="article-shell wrap"><article class="prose"><a class="back" href="/#research">← Back to research</a><p class="eyebrow">RESEARCH ARCHIVE / SUNNYMAPBPF</p>
 
-<a class="back" href="index.html">Azizcan Dastan</a>
 
-<h1>SunnyMapBPF</h1>
+
+<h1>SunnyMapBPF</h1><aside class="editor-note"><strong>Reading note · October 2026</strong><p>This earlier write-up documents the original research snapshot. Results are specific to the tested versions, privileges, and configuration; consult the linked repository for current scope.</p><a href="https://github.com/azqzazq1/SunnyMapBPF">Current research repository ↗</a></aside>
 <div class="subtitle">BPF Map State Poisoning Against eBPF Runtime Security Monitors</div>
 
 <div>
@@ -86,7 +68,7 @@
 
 <p>BPF Map State Poisoning is a class of same-privilege tampering in which a process modifies the runtime BPF map state of a security tool to suppress event generation at the kernel level. The attack operates below the user space agent, at the BPF program layer, where configuration and filtering decisions are made before any event reaches the user space pipeline.</p>
 
-<div class="diagram">
+<div class="diagram" role="region" aria-label="Research diagram" tabindex="0">
 <svg viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="0" width="760" height="380" fill="#fafbff" rx="8"/>
   <text x="380" y="28" text-anchor="middle" font-family="Times New Roman" font-size="14" fill="#111" font-weight="bold">BPF Map Poisoning: Attack Architecture</text>
@@ -164,7 +146,7 @@
   <p>Tracee uses a <code>config_map</code> (BPF_MAP_TYPE_HASH) to store per-policy configuration. The field <code>enabled_policies</code> gates all event filtering through <code>match_scope_filters()</code>. The function computes <code>res &amp; policies_cfg->enabled_policies</code> to determine which policies apply to a given event. Setting <code>enabled_policies = 0</code> causes this expression to evaluate to zero for every event.</p>
   <p>A companion field <code>policies_version</code> is cached per-CPU. The BPF program only re-reads config when it observes a version change. To ensure immediate propagation, the attack atomically bumps <code>policies_version</code> alongside the <code>enabled_policies</code> write. Total modification: approximately 10 bytes.</p>
 
-  <div class="diagram">
+  <div class="diagram" role="region" aria-label="Research diagram" tabindex="0">
   <svg viewBox="0 0 720 180" xmlns="http://www.w3.org/2000/svg">
     <rect x="0" y="0" width="720" height="180" fill="#fff" rx="6"/>
     <text x="360" y="24" text-anchor="middle" font-family="Times New Roman" font-size="13" fill="#111" font-weight="bold">Tracee: config_map Poisoning</text>
@@ -203,13 +185,13 @@
   </svg>
   </div>
 
-  <table>
+  <div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
     <tr><th>Metric</th><th>Baseline</th><th>Post Poison</th><th>Post Restore</th></tr>
     <tr><td>sched_process_exec events (5s)</td><td class="result-normal">16</td><td class="result-zero">0</td><td class="result-normal">7</td></tr>
     <tr><td>Detection rate</td><td class="result-normal">100%</td><td class="result-zero">0%</td><td class="result-normal">~44%</td></tr>
     <tr><td>Tool process status</td><td>Running</td><td>Running (no crash)</td><td>Running</td></tr>
     <tr><td>Log anomalies</td><td>None</td><td>None</td><td>None</td></tr>
-  </table>
+  </table></div>
 </div>
 
 <div class="tool-section">
@@ -217,7 +199,7 @@
   <p>Tetragon uses a two-stage attack surface. First, <code>execve_calls</code> is a BPF_MAP_TYPE_PROG_ARRAY used for tail calls in the process execution monitoring pipeline. Deleting entries from this prog_array breaks the tail-call chain, preventing execution of downstream BPF programs that generate <code>process_exec</code> events. Second, <code>execve_map</code> is a hash map storing active process tracking state; clearing it erases all process context.</p>
   <p>All Tetragon maps are pinned under <code>/sys/fs/bpf/tetragon/</code> with well-known paths, making target identification trivial. This enables a <strong>graduated attack</strong>: breaking only <code>execve_calls</code> suppresses execution events while leaving exit events intact, allowing the attacker to choose between partial and total blindness.</p>
 
-  <div class="diagram">
+  <div class="diagram" role="region" aria-label="Research diagram" tabindex="0">
   <svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg">
     <rect x="0" y="0" width="720" height="200" fill="#fff" rx="6"/>
     <text x="360" y="24" text-anchor="middle" font-family="Times New Roman" font-size="13" fill="#111" font-weight="bold">Tetragon: Graduated Attack Stages</text>
@@ -260,13 +242,13 @@
   </svg>
   </div>
 
-  <table>
+  <div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
     <tr><th>Metric</th><th>Baseline</th><th>prog_array only</th><th>Full attack</th><th>Restored</th></tr>
     <tr><td>process_exec events</td><td class="result-normal">14</td><td class="result-zero">0</td><td class="result-zero">0</td><td class="result-normal">11</td></tr>
     <tr><td>process_exit events</td><td class="result-normal">13+</td><td class="result-normal">13</td><td class="result-zero">0</td><td class="result-normal">Normal</td></tr>
     <tr><td>Total events</td><td class="result-normal">27+</td><td>13</td><td class="result-zero">0</td><td class="result-normal">Normal</td></tr>
     <tr><td>Detection rate</td><td class="result-normal">100%</td><td>~48%</td><td class="result-zero">0%</td><td class="result-normal">~79%</td></tr>
-  </table>
+  </table></div>
 </div>
 
 <div class="tool-section">
@@ -274,18 +256,18 @@
   <p>Falco's BPF probe uses an <code>interesting_syscalls</code> array map indexed by syscall number. At each syscall entry tracepoint, the BPF program checks <code>interesting_syscalls[__NR_syscall]</code>; a value of 0 causes the probe to return immediately without generating any event. Zeroing all 512 entries disables event generation for every system call, operating at the dispatch layer before any rule evaluation occurs.</p>
   <p>The attack is comprehensive because it targets the earliest filter in the BPF pipeline. No matter how many Falco rules are configured, none of them execute if the syscall filter discards the event before it reaches the rule engine.</p>
 
-  <table>
+  <div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
     <tr><th>Metric</th><th>Baseline</th><th>Post Poison</th><th>Restored</th></tr>
     <tr><td>"Sensitive file opened" alerts</td><td class="result-normal">1+ per read</td><td class="result-zero">0</td><td class="result-normal">1+ per read</td></tr>
     <tr><td>Total alerts across all rules</td><td class="result-normal">Normal</td><td class="result-zero">0</td><td class="result-normal">Normal</td></tr>
     <tr><td>Detection rate</td><td class="result-normal">100%</td><td class="result-zero">0%</td><td class="result-normal">100%</td></tr>
     <tr><td>Tool process status</td><td>Running</td><td>Running</td><td>Running</td></tr>
-  </table>
+  </table></div>
 </div>
 
 <h2>Cross-Tool Comparison</h2>
 
-<div class="diagram">
+<div class="diagram" role="region" aria-label="Research diagram" tabindex="0">
 <svg viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="0" width="760" height="340" fill="#fafbff" rx="8"/>
   <text x="380" y="28" text-anchor="middle" font-family="Times New Roman" font-size="14" fill="#111" font-weight="bold">Event Detection: Baseline vs. Poisoned</text>
@@ -347,7 +329,7 @@
 
 <h2>Map Security Posture</h2>
 
-<table>
+<div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
   <tr>
     <th>Property</th>
     <th>Tracee v0.24.1</th>
@@ -402,7 +384,7 @@
     <td>1 BPF invocation</td>
     <td>1 BPF invocation</td>
   </tr>
-</table>
+</table></div>
 
 <h2>Key Observations</h2>
 
@@ -423,8 +405,6 @@
   <a href="https://doi.org/10.5281/zenodo.20413161">DOI: 10.5281/zenodo.20413161</a>
 </div>
 
-<hr>
-<footer>Azizcan Dastan | Milenium Security | 2026</footer>
 
-</body>
-</html>
+
+</article></main><footer class="site-footer wrap"><div><a class="footer-name" href="/">Azizcan Daştan<span class="accent">.</span></a><p>Looking closely at the things we trust.</p></div><div class="footer-links"><a href="https://github.com/azqzazq1">GitHub ↗</a><a href="https://linkedin.com/in/azqzazq">LinkedIn ↗</a><a href="mailto:azqzazq@azqzazq1.blog">Email ↗</a></div><div class="colophon">© 2026 · Independent research<br>HTML, CSS &amp; a little JavaScript.</div></footer></body></html>

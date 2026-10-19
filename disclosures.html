@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two CVEs, two different trust boundaries. — Azizcan Daştan</title>
+<meta name="description" content="Research notes on Linux authorization and WordPress access control.">
+<meta name="theme-color" content="#f5f3ec">
+<link rel="canonical" href="https://azqzazq1.blog/disclosures.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Two CVEs, two different trust boundaries. — Azizcan Daştan">
+<meta property="og:description" content="Research notes on Linux authorization and WordPress access control.">
+<meta property="og:url" content="https://azqzazq1.blog/disclosures.html">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/site.js" defer></script>
+</head><body><a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header wrap">
+<a class="brand" href="/" aria-label="Azizcan Daştan, home"><span class="brand-mark" aria-hidden="true">a.</span><span>azqzazq1<span class="brand-caption">security research / personal notes</span></span></a>
+<nav aria-label="Main navigation"><a href="/#research">Research</a><a href="/#writing">Writing</a><a href="/#now">Now</a><a href="/#recognition">Recognition</a></nav>
+<a class="header-contact" href="mailto:azqzazq@azqzazq1.blog">Say hello <span aria-hidden="true">↗</span></a>
+</header><main id="main" class="article-shell wrap"><article class="prose"><a class="back" href="/#writing">← Back to the notebook</a><p class="eyebrow">DISCLOSURE NOTES / 19 OCTOBER 2026</p><h1>Two CVEs, two different trust boundaries.</h1><p class="article-lede">Research notes on Linux authorization and WordPress access control.</p><p>These records concern different components and different security boundaries. Each entry links to the public record and the corresponding research repository.</p>
+<section id="cve-2026-7867"><h2>CVE-2026-7867 · udisks2</h2><p class="small-label">PUBLIC VENDOR RECORD</p><p>Research into authorization handling in udisks2, focusing on the relationship between a caller’s identity and privileged mount operations. Discovered and reported with <strong>Özlem Ozan</strong>.</p><p>Red Hat’s public record credits Azizcan Daştan and Özlem Ozan and rates the issue Important (CVSS 3.1: 7.8). The issue involves insufficient authorization of the <code>as-user</code> option and requires a local attacker with an active console session. See the vendor record and linked upstream advisory for affected versions and remediation.</p><ul><li><a href="https://access.redhat.com/security/cve/cve-2026-7867">Red Hat vulnerability record</a></li><li><a href="https://github.com/azqzazq1/CVE-2026-7867-disk2root">Research repository · disk2root</a></li></ul></section>
+<section id="cve-2026-110896"><h2>CVE-2026-110896 · Passster</h2><p class="small-label">PUBLISHED / 16 OCTOBER 2026</p><p>A missing-authorization issue in the WordPress Passster plugin, affecting versions through <strong>4.3.18</strong> and fixed in <strong>4.3.19</strong>. Patchstack credits <strong>azqzazq1</strong> as the finder.</p><p>The published severity is CVSS 3.1 <strong>5.3 (Medium)</strong>, while Patchstack assigns a <strong>Low</strong> priority. The reported impact is limited access-control exposure, not remote code execution, privilege escalation, or a site takeover.</p><p>The accompanying repository documents manual source review and a passive version checker. That checker is not an exploit or definitive proof that a particular installation is vulnerable.</p><ul><li><a href="https://nvd.nist.gov/vuln/detail/cve-2026-110896">NVD record</a></li><li><a href="https://patchstack.com/database/wordpress/plugin/content-protector/vulnerability/wordpress-passster-plugin-4-3-18-broken-access-control-vulnerability">Patchstack advisory and credit</a></li><li><a href="https://github.com/azqzazq1/CVE-2026-110896">Research notes and version checker</a></li></ul></section></article></main><footer class="site-footer wrap"><div><a class="footer-name" href="/">Azizcan Daştan<span class="accent">.</span></a><p>Looking closely at the things we trust.</p></div><div class="footer-links"><a href="https://github.com/azqzazq1">GitHub ↗</a><a href="https://linkedin.com/in/azqzazq">LinkedIn ↗</a><a href="mailto:azqzazq@azqzazq1.blog">Email ↗</a></div><div class="colophon">© 2026 · Independent research<br>HTML, CSS &amp; a little JavaScript.</div></footer></body></html>

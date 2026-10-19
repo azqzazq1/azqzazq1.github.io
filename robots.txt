@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://azqzazq1.blog/sitemap.xml

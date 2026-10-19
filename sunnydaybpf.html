@@ -1,42 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SunnyDayBPF | Post Syscall Telemetry Deception</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Times New Roman', Times, serif; background: #ffffff; color: #333333; max-width: 1080px; margin: 0 auto; padding: 48px 40px; line-height: 1.8; }
-  a { color: #2563eb; text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .back { font-size: 0.85em; margin-bottom: 32px; display: inline-block; }
-  h1 { color: #111; font-size: 1.8em; margin-bottom: 4px; }
-  .subtitle { color: #888; font-size: 0.95em; margin-bottom: 32px; }
-  h2 { color: #111; font-size: 1.2em; margin: 40px 0 16px 0; border-bottom: 1px solid #e0e0e0; padding-bottom: 6px; }
-  h3 { color: #111; font-size: 1.05em; margin: 28px 0 10px 0; }
-  p { font-size: 0.92em; color: #444; margin-bottom: 14px; }
-  p strong { color: #222; }
-  code { font-family: 'Courier New', monospace; font-size: 0.88em; background: #f5f5f5; padding: 1px 5px; border-radius: 3px; }
-  .tag { display: inline-block; font-size: 0.72em; padding: 2px 8px; margin: 2px 3px 2px 0; background: #eef2ff; color: #2563eb; border-radius: 2px; }
-  .diagram { margin: 28px 0; text-align: center; overflow-x: auto; }
-  .diagram svg { max-width: 100%; height: auto; }
-  .quote { border-left: 3px solid #ddd; padding: 8px 16px; margin: 16px 0; font-style: italic; color: #666; font-size: 0.9em; }
-  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px 0; font-size: 0.85em; }
-  th { background: #f8f9fa; color: #111; text-align: left; padding: 10px 12px; border-bottom: 2px solid #e0e0e0; }
-  td { padding: 8px 12px; border-bottom: 1px solid #eee; color: #444; }
-  .links { font-size: 0.85em; margin-top: 32px; }
-  hr { border: none; border-top: 1px solid #e0e0e0; margin: 44px 0; }
-  footer { font-size: 0.75em; color: #aaa; }
-  .highlight-box { background: #fafbff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; margin: 20px 0; }
-  .comparison { display: flex; gap: 20px; flex-wrap: wrap; }
-  .comparison > div { flex: 1; min-width: 280px; }
-</style>
-</head>
-<body>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SunnyDayBPF | Post Syscall Telemetry Deception — Azizcan Daştan</title>
+<meta name="description" content="Research notes by Azizcan Daştan on SunnyDayBPF. Original diagrams and technical discussion, with links to current source material.">
+<meta name="theme-color" content="#f5f3ec">
+<link rel="canonical" href="https://azqzazq1.blog/sunnydaybpf.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SunnyDayBPF | Post Syscall Telemetry Deception — Azizcan Daştan">
+<meta property="og:description" content="Research notes by Azizcan Daştan on SunnyDayBPF. Original diagrams and technical discussion, with links to current source material.">
+<meta property="og:url" content="https://azqzazq1.blog/sunnydaybpf.html">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/sunnydaybpf.css">
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/site.js" defer></script>
+</head><body class="legacy-article"><a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header wrap">
+<a class="brand" href="/" aria-label="Azizcan Daştan, home"><span class="brand-mark" aria-hidden="true">a.</span><span>azqzazq1<span class="brand-caption">security research / personal notes</span></span></a>
+<nav aria-label="Main navigation"><a href="/#research">Research</a><a href="/#writing">Writing</a><a href="/#now">Now</a><a href="/#recognition">Recognition</a></nav>
+<a class="header-contact" href="mailto:azqzazq@azqzazq1.blog">Say hello <span aria-hidden="true">↗</span></a>
+</header><main id="main" class="article-shell wrap"><article class="prose"><a class="back" href="/#research">← Back to research</a><p class="eyebrow">RESEARCH ARCHIVE / SUNNYDAYBPF</p>
 
-<a class="back" href="index.html">Azizcan Dastan</a>
 
-<h1>SunnyDayBPF</h1>
+
+<h1>SunnyDayBPF</h1><aside class="editor-note"><strong>Reading note · October 2026</strong><p>This earlier write-up documents the original research snapshot. Results are specific to the tested versions, privileges, and configuration; consult the linked repository for current scope.</p><a href="https://github.com/azqzazq1/SunnyDayBPF">Current research repository ↗</a></aside>
 <div class="subtitle">Post Syscall User Buffer Telemetry Deception with eBPF</div>
 
 <div>
@@ -63,7 +51,7 @@
 
 <p>SunnyDayBPF implements a post syscall telemetry deception model. The technique uses eBPF programs attached to syscall tracepoints to intercept the return path of read-like system calls. The manipulation occurs in the narrow window after the kernel has written data into the user space buffer but before the monitoring agent processes that data.</p>
 
-<div class="diagram">
+<div class="diagram" role="region" aria-label="Research diagram" tabindex="0">
 <svg viewBox="0 0 760 500" xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="0" width="760" height="500" fill="#fafbff" rx="8"/>
   <text x="380" y="28" text-anchor="middle" font-family="Times New Roman" font-size="14" fill="#111" font-weight="bold">Syscall Timeline: The Manipulation Window</text>
@@ -187,19 +175,19 @@
 <h3>Key Distinction from Traditional Evasion</h3>
 <p>Traditional evasion attempts to prevent events from being seen: hiding processes, disabling sensors, avoiding detection triggers. SunnyDayBPF takes a fundamentally different approach. It allows the event to occur, allows the monitoring process to read data, and alters the observation before processing. The distinction is between hiding and deceiving.</p>
 
-<table>
+<div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
   <tr><th>Approach</th><th>Method</th><th>Event visible?</th><th>Agent runs?</th><th>Data accurate?</th></tr>
   <tr><td>Traditional evasion</td><td>Hide or prevent event</td><td>No</td><td>Yes</td><td>N/A</td></tr>
   <tr><td>Sensor disabling</td><td>Kill or stop agent</td><td>No</td><td>No</td><td>N/A</td></tr>
   <tr><td><strong>SunnyDayBPF</strong></td><td>Alter observation</td><td><strong>Yes</strong></td><td><strong>Yes</strong></td><td><strong>No</strong></td></tr>
-</table>
+</table></div>
 </div>
 
 <h2>Affected Telemetry Paths</h2>
 
 <p>The technique is relevant to any monitoring system that reads telemetry through read-like syscalls into user space buffers. This includes but is not limited to:</p>
 
-<div class="diagram">
+<div class="diagram" role="region" aria-label="Research diagram" tabindex="0">
 <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg">
   <rect x="0" y="0" width="760" height="320" fill="#fafbff" rx="8"/>
   <text x="380" y="28" text-anchor="middle" font-family="Times New Roman" font-size="14" fill="#111" font-weight="bold">Downstream Impact: What Trusts Agent Telemetry?</text>
@@ -255,14 +243,14 @@
 
 <h2>Prerequisites and Constraints</h2>
 
-<table>
+<div class="table-scroll" role="region" aria-label="Research data table" tabindex="0"><table>
   <tr><th>Requirement</th><th>Details</th></tr>
   <tr><td>Capabilities</td><td>CAP_BPF + CAP_PERFMON (or root)</td></tr>
   <tr><td>Kernel config</td><td>CONFIG_BPF_KPROBE_OVERRIDE=y for bpf_probe_write_user</td></tr>
   <tr><td>Target buffer</td><td>Must be in writable user memory (stack/heap, not .rodata)</td></tr>
   <tr><td>BPF helpers</td><td>bpf_probe_read_user, bpf_probe_write_user, bpf_get_current_comm</td></tr>
   <tr><td>Attachment</td><td>Tracepoints: sys_enter_read, sys_exit_read (and variants)</td></tr>
-</table>
+</table></div>
 
 <h2>The Deeper Question</h2>
 
@@ -276,8 +264,6 @@
   <a href="https://github.com/azqzazq1/SunnyDayBPF">GitHub Repository</a>
 </div>
 
-<hr>
-<footer>Azizcan Dastan | Milenium Security | 2026</footer>
 
-</body>
-</html>
+
+</article></main><footer class="site-footer wrap"><div><a class="footer-name" href="/">Azizcan Daştan<span class="accent">.</span></a><p>Looking closely at the things we trust.</p></div><div class="footer-links"><a href="https://github.com/azqzazq1">GitHub ↗</a><a href="https://linkedin.com/in/azqzazq">LinkedIn ↗</a><a href="mailto:azqzazq@azqzazq1.blog">Email ↗</a></div><div class="colophon">© 2026 · Independent research<br>HTML, CSS &amp; a little JavaScript.</div></footer></body></html>
