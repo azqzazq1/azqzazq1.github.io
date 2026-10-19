@@ -41,7 +41,7 @@ The CSS boundary diagram, favicon and `assets/tea-break.svg` were created for th
 ## Site identity and kernel notebook
 
 Contact: `kernel@azqzazq1.blog`. Motto: “show about everything”.
-`oopsie.html` is the intentionally empty kernel-notes page linked from every header. Replace its main content when the notebook is ready, preserving the shared navigation and metadata.
+Every header links to `https://oopsie.azqzazq1.blog/`, hosted separately in `azqzazq1/oopsie`. The old `oopsie.html` URL redirects there. Preserve this blog’s CNAME (`azqzazq1.blog`); the separate Oopsie repository uses `oopsie.azqzazq1.blog`.
 
 ## OWL0 essay
 
