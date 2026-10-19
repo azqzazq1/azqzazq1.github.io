@@ -36,7 +36,7 @@ Open http://127.0.0.1:8765. There is no build step.
 
 ## Artwork
 
-The CSS boundary diagram, favicon and `assets/coffee-break.svg` were created for this site. The coffee illustration is generic original artwork, not a TV still or portrait. No third-party George Costanza/Seinfeld imagery is included. If adding licensed imagery later, record creator, source, license, required attribution and changes alongside the asset; include visible attribution where required. Do not treat availability on a meme site as permission.
+The CSS boundary diagram, favicon and `assets/tea-break.svg` were created for this site. The tea illustration is generic original artwork, not a TV still or portrait. No third-party George Costanza/Seinfeld imagery is included. If adding licensed imagery later, record creator, source, license, required attribution and changes alongside the asset; include visible attribution where required. Do not treat availability on a meme site as permission.
 
 ## Site identity and kernel notebook
 
