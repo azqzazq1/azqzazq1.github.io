@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>My worlds are colliding! — Azizcan Daştan</title><meta name="description" content="One address, two translations, and a social catastrophe at the page-table boundary."><meta name="theme-color" content="#f5f3ec"><link rel="canonical" href="https://azqzazq1.blog/writing/worlds-are-colliding/"><meta property="og:type" content="article"><meta property="og:title" content="My worlds are colliding!"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css"><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"a53665957a294487b931af5fa119c3e1"}'></script></head><body><a class="skip-link" href="#main">Skip to content</a><header class="site-header wrap">
+<a class="brand" href="/" aria-label="Azizcan Daştan, home"><span class="brand-mark" aria-hidden="true">a.</span><span>azqzazq1<span class="brand-caption">show about everything</span></span></a>
+<nav aria-label="Main navigation"><a href="/#research">Research</a><a href="/writing/">Writing</a><a href="/#now">Now</a><a href="/#recognition">Recognition</a><a href="https://oopsie.azqzazq1.blog/">oopsie</a></nav>
+<a class="header-contact" href="mailto:kernel@azqzazq1.blog">Say hello <span aria-hidden="true">↗</span></a>
+</header><main id="main" class="article-shell wrap"><article class="prose"><a class="back" href="/writing/">← Back to the notebook</a><p class="eyebrow">OFF-TOPIC / EPT / MEMORY RELATIONSHIPS · OCT 2026</p><h1>My worlds are colliding!</h1><p class="article-lede">One address, two translations, and a social catastrophe at the page-table boundary.</p><figure class="note-illustration"><img src="/assets/costanza-worlds.svg" alt="Original two-tone vector caricature between host and guest memory maps" width="760" height="360"><figcaption>Original vector field note. Art direction: optimism, misplaced blame, very strong tea.</figcaption></figure>
+<p>I have two worlds. In one world I am the confident guest operating system, assigning virtual addresses and telling everybody exactly where the furniture goes. In the other I am the host, looking at guest-physical pages and keeping an entirely separate record of where things actually live.</p>
+<p>Two worlds. Beautiful separation. Respectful distance. Everyone is happy.</p>
+<p>Then somebody brings a guest virtual address to a host-physical discussion.</p>
+<p><strong>MY WORLDS ARE COLLIDING!</strong></p>
+<h2>The address is not the apartment</h2>
+<p>The guest says: “The buffer is at this virtual address.” Excellent. Very specific. Does that mean those bytes occupy a fixed physical location? No. The guest's page tables translate guest virtual addresses into guest physical addresses. When hardware nested translation is enabled, EPT on Intel or NPT on AMD adds a second translation from guest physical to host physical.</p>
+<p>I thought we had settled this when I wrote down one number. But there are three numbers. Three! For a single buffer! This architecture has a paperwork problem.</p>
+<p>I announce that all addresses should have one name. The memory management unit declines to consider the proposal.</p>
+<h2>A lease with two landlords</h2>
+<p>A guest process can map, unmap, change protections, and fault according to rules enforced by its own operating system. Separately, the VMM can constrain the guest's access to guest-physical regions. The two layers do not magically merge into one permission check; they compose.</p>
+<p>A guest mapping may appear writable in the guest's own page tables while the EPT mapping forbids writing. The resulting second-stage violation is not proof that the guest page-table entry was wrong. It is proof that the host-side mapping enforced another condition.</p>
+<p>George hears “second-stage translation” and demands to know why the first stage wasn't enough. George does not enjoy being corrected by a translation lookaside buffer.</p>
+<h2>The suspiciously familiar address</h2>
+<p>I recently learned about use-after-free. A pointer refers to an object. The object is freed. A new object receives the same address. The pointer has not changed, but its meaning has. The landlord changed the tenant and forgot to tell the old key.</p>
+<p>That is exactly the kind of assumption we must not make across the host/guest boundary. Same-looking address does not imply same object. Same guest-physical page number does not always mean the same host-physical backing forever. Translation, invalidation, lifetime, and ownership are all relevant.</p>
+<p>The address has returned from a weekend trip with an entirely new personality. I am expected to be understanding.</p>
+<h2>The OWL0 experiment</h2>
+<p>OWL0's investigation is not “find a magic memory region nobody can see.” It is to create a small controlled service outside the guest's usual process bookkeeping and measure different observers against it. Guest process tools may lack a representation for a lower-layer service; host instrumentation, CPU time and device interactions may still reveal consequences.</p>
+<p>Build a trace table with guest virtual, guest physical and host physical identifiers where the setup permits it. Record mapping updates and relevant invalidations. Reproduce page-fault versus EPT-violation conditions in a safe lab. Ask whether each observer has a defined line of sight. Document the gaps without turning a gap into a superpower.</p>
+<p>I propose putting all those facts on one napkin. There is not enough room. Naturally, I blame the napkin.</p>
+<h2>A working agreement between worlds</h2>
+<ol>
+<li>Always name the address space: GVA, GPA or HPA.</li>
+<li>Separate guest permissions from second-stage permissions.</li>
+<li>Track mappings, invalidation and object lifetime.</li>
+<li>Measure observability at each layer, not by intuition.</li>
+<li>If worlds collide, use a diagram before calling a meeting.</li>
+</ol>
+<p>Perhaps these two worlds can coexist. Perhaps the guest can have its pages and the host can have its own translations. Perhaps I can stop treating nested paging as a personal attack.</p>
+<p><strong>Two worlds. One experiment. I still want custody of the original address.</strong></p><div class="editor-note">Original sitcom-inspired parody and illustrations; no TV stills or reproduced dialogue. <a href="/writing/">Back to all field notes →</a></div></article></main><footer class="site-footer wrap"><div><a class="footer-name" href="/">Azizcan Daştan<span class="accent">.</span></a><p>show about everything</p></div><div class="footer-links"><a href="https://github.com/azqzazq1">GitHub ↗</a><a href="https://linkedin.com/in/azqzazq">LinkedIn ↗</a><a href="mailto:kernel@azqzazq1.blog">Email ↗</a></div><div class="colophon">© 2026 · Independent research<br>HTML, CSS &amp; a little JavaScript.</div></footer></body></html>
