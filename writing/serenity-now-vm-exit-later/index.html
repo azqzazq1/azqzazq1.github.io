@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Serenity now. VM-exit later. — Azizcan Daştan</title><meta name="description" content="A harmless instruction, an unreasonable interception policy, and one very overworked hypervisor."><meta name="theme-color" content="#f5f3ec"><link rel="canonical" href="https://azqzazq1.blog/writing/serenity-now-vm-exit-later/"><meta property="og:type" content="article"><meta property="og:title" content="Serenity now. VM-exit later."><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css"><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"a53665957a294487b931af5fa119c3e1"}'></script></head><body><a class="skip-link" href="#main">Skip to content</a><header class="site-header wrap">
+<a class="brand" href="/" aria-label="Azizcan Daştan, home"><span class="brand-mark" aria-hidden="true">a.</span><span>azqzazq1<span class="brand-caption">show about everything</span></span></a>
+<nav aria-label="Main navigation"><a href="/#research">Research</a><a href="/writing/">Writing</a><a href="/#now">Now</a><a href="/#recognition">Recognition</a><a href="https://oopsie.azqzazq1.blog/">oopsie</a></nav>
+<a class="header-contact" href="mailto:kernel@azqzazq1.blog">Say hello <span aria-hidden="true">↗</span></a>
+</header><main id="main" class="article-shell wrap"><article class="prose"><a class="back" href="/writing/">← Back to the notebook</a><p class="eyebrow">OFF-TOPIC / VMX / OFFICE POLITICS · OCT 2026</p><h1>Serenity now. VM-exit later.</h1><p class="article-lede">A harmless instruction, an unreasonable interception policy, and one very overworked hypervisor.</p><figure class="note-illustration"><img src="/assets/costanza-vmexit.svg" alt="Original vector illustration of an angry bespectacled researcher facing a VM-exit monitor" width="760" height="360"><figcaption>Original vector field note. Art direction: optimism, misplaced blame, very strong tea.</figcaption></figure>
+<p>The guest has been running for four milliseconds without calling me. Four beautiful milliseconds. My calendar is clear. The tea is hot. I am beginning to believe we have reached an understanding.</p>
+<p>Then the monitor flashes: <strong>VM EXIT</strong>.</p>
+<p>Again? What is this, an emergency? Did someone unplug the virtual universe? No. The guest executed a perfectly ordinary instruction that happened to be on <em>my</em> interception list. I wrote the interception list. That is irrelevant. I feel ambushed.</p>
+<h2>A host with boundaries</h2>
+<p>In a traditional office, there's a front desk. Visitors sign in, the receptionist calls upstairs, and nobody interrupts the manager until there is a good reason. In a VMX-based virtual machine, the manager is the VMM. The guest is the office worker. A VM entry tells the worker to get on with it; a configured event can cause a VM exit, returning control to the manager.</p>
+<p>I made a list of events worthy of my attention. The list was ambitious. Every interesting thing became worthy of attention. The guest is now contacting management constantly. We have accidentally built a call center.</p>
+<p>“SERENITY NOW,” I whisper to the scheduler. “VM-EXIT LATER.” The processor is unmoved by the request.</p>
+<h2>The most expensive five minutes of my life</h2>
+<p>My first design: inspect every single event. Every register twitch! Every microscopic suspicion! Surely, if we can see everything, we can understand everything.</p>
+<p>What I forgot is that observation has a cost. VM exits save and restore state, move control across a virtualization boundary, and invoke a handler. Some workloads tolerate this beautifully. Others turn my “harmless” observability policy into a slowdown large enough to qualify as an incident.</p>
+<p>Now I am the guest's performance problem <em>and</em> the person investigating the guest's performance problem. I have an entire organizational chart. It is one man.</p>
+<h2>An incident report, naturally</h2>
+<ol>
+<li>Guest executes work inside VMX non-root operation.</li>
+<li>A configured intercept causes a VM exit.</li>
+<li>VMM examines exit reason and relevant guest state.</li>
+<li>VMM records only the data needed for the hypothesis.</li>
+<li>VMM resumes the guest and measures the resulting overhead.</li>
+<li>I file a complaint against my own interception configuration.</li>
+</ol>
+<p>This isn't an argument against instrumentation. It is an argument against pretending that more instrumentation is free. You need a research question before you decide where to stop the machine.</p>
+<h2>OWL0 learns to knock</h2>
+<p>For OWL0, the goal is not to throw a party below the kernel and invite every instruction. It is to test a specific observation boundary. Can a guest process monitor account for a request handled outside the guest's ordinary process model? What can a lower-layer observer record? What unavoidable footprints remain, such as CPU time and memory effects?</p>
+<p>The experiment should answer those questions with a bounded protocol, targeted intercepts, independent timing data, and an honest list of what we have <em>not</em> proven. “The guest didn't list a process” does not mean “nothing could ever observe this.”</p>
+<p>I explain this very calmly while trying to forcefully close seven debugger windows.</p>
+<p>Tonight I will remove half my intercepts. I will ask the guest to call only when it is important. I will write down what “important” means. I will measure before boasting. This is growth.</p>
+<p>Tomorrow, if the system is fast, I will take the credit. If it is slow, I will speak privately to the hypervisor about professional boundaries.</p>
+<p><strong>The VM exit was my configuration. I continue to believe the guest could have shown some consideration.</strong></p><div class="editor-note">Original sitcom-inspired parody and illustrations; no TV stills or reproduced dialogue. <a href="/writing/">Back to all field notes →</a></div></article></main><footer class="site-footer wrap"><div><a class="footer-name" href="/">Azizcan Daştan<span class="accent">.</span></a><p>show about everything</p></div><div class="footer-links"><a href="https://github.com/azqzazq1">GitHub ↗</a><a href="https://linkedin.com/in/azqzazq">LinkedIn ↗</a><a href="mailto:kernel@azqzazq1.blog">Email ↗</a></div><div class="colophon">© 2026 · Independent research<br>HTML, CSS &amp; a little JavaScript.</div></footer></body></html>
