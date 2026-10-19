@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>It's not a log if I believe the log. — Azizcan Daştan</title><meta name="description" content="SunnyDayBPF, the perfect alibi, and the very dangerous comfort of a believable trace."><meta name="theme-color" content="#f5f3ec"><link rel="canonical" href="https://azqzazq1.blog/writing/the-telemetry-alibi/"><meta property="og:type" content="article"><meta property="og:title" content="It's not a log if I believe the log."><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/site.css"><script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"a53665957a294487b931af5fa119c3e1"}'></script></head><body><a class="skip-link" href="#main">Skip to content</a><header class="site-header wrap">
+<a class="brand" href="/" aria-label="Azizcan Daştan, home"><span class="brand-mark" aria-hidden="true">a.</span><span>azqzazq1<span class="brand-caption">show about everything</span></span></a>
+<nav aria-label="Main navigation"><a href="/#research">Research</a><a href="/writing/">Writing</a><a href="/#now">Now</a><a href="/#recognition">Recognition</a><a href="https://oopsie.azqzazq1.blog/">oopsie</a></nav>
+<a class="header-contact" href="mailto:kernel@azqzazq1.blog">Say hello <span aria-hidden="true">↗</span></a>
+</header><main id="main" class="article-shell wrap"><article class="prose"><a class="back" href="/writing/">← Back to the notebook</a><p class="eyebrow">OFF-TOPIC / SUNNYDAYBPF / THE ALIBI · OCT 2026</p><h1>It's not a log if I believe the log.</h1><p class="article-lede">SunnyDayBPF, the perfect alibi, and the very dangerous comfort of a believable trace.</p><figure class="note-illustration"><img src="/assets/costanza-telemetry.svg" alt="Original vector illustration of worried researcher presenting a spotless log beside a discordant raw trace" width="760" height="360"><figcaption>Original vector field note. Art direction: optimism, misplaced blame, very strong tea.</figcaption></figure>
+<p>The terminal is telling me everything is fine. The log is neat. Timestamps are orderly. Every severity is low. The system has the demeanor of a man returning a library book three days early.</p>
+<p>I've prepared my statement: “The evidence speaks for itself.”</p>
+<p>Unfortunately, the evidence has been introduced to an editor.</p>
+<h2>The strongest possible story</h2>
+<p>My first mistake was treating a readable security event as a sworn witness. I could parse it. I could put it in a dashboard. I could send it to a meeting with a little green check mark. So surely it described reality.</p>
+<p>SunnyDayBPF examines a specific weakness in that instinct. In some Linux observation paths, an agent consumes data from a userspace buffer after a syscall has returned. If the bytes in that buffer are altered before the agent interprets them, the agent can accurately report <em>the bytes it saw</em> while telling an inaccurate story about the event one layer below.</p>
+<p>“I believe the log,” I say. The log believes itself. We have unanimous agreement. The kernel has not been invited to vote.</p>
+<h2>An exquisitely organized misunderstanding</h2>
+<p>A detector reading a post-syscall buffer can become a witness to the buffer's current contents rather than a witness to its provenance. An event has happened; the representation is not always identical to the event. This is the telemetry-integrity problem explored in my <a href="https://github.com/azqzazq1/SunnyDayBPF">SunnyDayBPF research</a>.</p>
+<p>It is not a claim that all security agents are deceived, or that every audit source follows the same path. Placement, instrumentation, privileges and timing determine what each observer can know. Calling an entire monitoring stack “blind” from one reproducer would make an impressive headline and a deeply questionable paper.</p>
+<p>I almost wrote that headline. I have magnificent headlines. I am occasionally asked for measurements.</p>
+<h2>The OWL0 connection nobody ordered</h2>
+<p>OWL0 asks a related question from another architectural layer: if something executes outside the guest's ordinary process model, which guest-side monitors see it, and which lower-layer effects remain measurable? SunnyDayBPF asks whether the reported event still matches the underlying event. The projects are different, but they challenge the same casual assumption: that observation is a neutral, complete transcript.</p>
+<p>One project concerns <strong>the integrity of observed data</strong>. The other examines <strong>the boundary of the observer's vantage point</strong>. Neither proves universal invisibility. Both improve when independent data sources disagree and someone takes that disagreement seriously.</p>
+<p>I want a dashboard with one gauge that says CONFIDENCE. I am informed this is not a substitute for provenance.</p>
+<h2>A less comfortable investigation</h2>
+<ol>
+<li>Record what operation actually occurred at the source, if a trustworthy source is available.</li>
+<li>Record what bytes the observing agent consumed, and when.</li>
+<li>Identify the transformation and its possible authority.</li>
+<li>Compare sources whose trust boundaries differ.</li>
+<li>State the scope of the observation and the uncertainties.</li>
+<li>Drink tea before writing “undetectable” in the conclusion.</li>
+</ol>
+<p>There is no shame in finding that an agent tells the truth about its own input. The problem is assuming that input could not have changed. Research begins where the comfortable story and the more independent measurement diverge.</p>
+<p>My original log remains beautifully formatted. I am considering framing it.</p>
+<p><strong>The telemetry was persuasive. I feel its delivery could have been a little more honest.</strong></p><div class="editor-note">Original sitcom-inspired parody and illustrations; no TV stills or reproduced dialogue. <a href="/writing/">Back to all field notes →</a></div></article></main><footer class="site-footer wrap"><div><a class="footer-name" href="/">Azizcan Daştan<span class="accent">.</span></a><p>show about everything</p></div><div class="footer-links"><a href="https://github.com/azqzazq1">GitHub ↗</a><a href="https://linkedin.com/in/azqzazq">LinkedIn ↗</a><a href="mailto:kernel@azqzazq1.blog">Email ↗</a></div><div class="colophon">© 2026 · Independent research<br>HTML, CSS &amp; a little JavaScript.</div></footer></body></html>
